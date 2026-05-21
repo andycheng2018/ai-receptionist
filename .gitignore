@@ -1,0 +1,17 @@
+# Python
+venv/
+__pycache__/
+*.pyc
+
+# Environment / secrets
+.env
+
+# Local database / test data
+leads.db
+leads.json
+
+# Mac
+.DS_Store
+
+# ngrok / logs
+*.log

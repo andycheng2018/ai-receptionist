@@ -1,0 +1,732 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>AI Receptionist Demo</title>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 1200px;
+      margin: 40px auto;
+      padding: 20px;
+      background: #f7f7f7;
+    }
+
+    h1 {
+      margin-bottom: 5px;
+    }
+
+    .subtitle {
+      color: #555;
+      margin-bottom: 20px;
+    }
+
+    textarea {
+      width: 100%;
+      height: 120px;
+      font-size: 16px;
+      padding: 10px;
+      box-sizing: border-box;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+    }
+
+    button {
+      margin-top: 10px;
+      margin-right: 8px;
+      padding: 10px 16px;
+      font-size: 16px;
+      cursor: pointer;
+      border-radius: 8px;
+      border: 1px solid #999;
+      background: white;
+    }
+
+    button:hover {
+      background: #eee;
+    }
+
+    .primary {
+      background: #2563eb;
+      color: white;
+      border: 1px solid #2563eb;
+    }
+
+    .primary:hover {
+      background: #1d4ed8;
+    }
+
+    .voice {
+      background: #16a34a;
+      color: white;
+      border: 1px solid #16a34a;
+    }
+
+    .voice:hover {
+      background: #15803d;
+    }
+
+    .danger {
+      background: #dc2626;
+      color: white;
+      border: 1px solid #dc2626;
+    }
+
+    .danger:hover {
+      background: #b91c1c;
+    }
+
+    .small-button {
+      padding: 5px 8px;
+      font-size: 12px;
+      margin: 2px;
+      border-radius: 6px;
+    }
+
+    .box {
+      margin-top: 20px;
+      padding: 15px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      background: white;
+      white-space: pre-wrap;
+    }
+
+    .session {
+      margin-top: 10px;
+      font-size: 14px;
+      color: #555;
+    }
+
+    pre {
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+
+    .chat-history {
+      margin-top: 20px;
+      padding: 15px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      background: white;
+      max-height: 350px;
+      overflow-y: auto;
+    }
+
+    .chat-message {
+      margin-bottom: 14px;
+      padding: 10px;
+      border-radius: 8px;
+    }
+
+    .customer {
+      background: #e0f2fe;
+    }
+
+    .bot {
+      background: #ecfdf5;
+    }
+
+    .label {
+      font-weight: bold;
+      margin-bottom: 4px;
+    }
+
+    .error {
+      color: #b91c1c;
+      font-weight: bold;
+    }
+
+    .status {
+      margin-top: 10px;
+      font-size: 14px;
+      color: #444;
+    }
+
+    .listening {
+      color: #16a34a;
+      font-weight: bold;
+    }
+
+    .latency-good {
+      color: #16a34a;
+      font-weight: bold;
+    }
+
+    .latency-ok {
+      color: #ca8a04;
+      font-weight: bold;
+    }
+
+    .latency-slow {
+      color: #dc2626;
+      font-weight: bold;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 12px;
+      font-size: 14px;
+    }
+
+    th, td {
+      border: 1px solid #ddd;
+      padding: 8px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: #f1f5f9;
+      font-weight: bold;
+    }
+
+    tr:nth-child(even) {
+      background: #fafafa;
+    }
+
+    .lead-table-wrapper {
+      overflow-x: auto;
+      margin-top: 10px;
+    }
+
+    .pill {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 999px;
+      background: #e0f2fe;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    .status-pill {
+      display: inline-block;
+      padding: 4px 9px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: bold;
+      white-space: nowrap;
+    }
+
+    .status-new {
+      background: #dbeafe;
+      color: #1d4ed8;
+    }
+
+    .status-contacted {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    .status-scheduled {
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .status-closed {
+      background: #e5e7eb;
+      color: #374151;
+    }
+
+    .status-lost {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .empty {
+      color: #666;
+      font-style: italic;
+      margin-top: 10px;
+    }
+
+    .actions {
+      min-width: 210px;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>AI Receptionist Demo</h1>
+  <div class="subtitle">Painting contractor lead-capture prototype with browser voice + latency tracking</div>
+
+  <div class="session">
+    Current Customer Session:
+    <strong id="sessionId"></strong>
+  </div>
+
+  <p>Type or speak a customer message:</p>
+
+  <textarea id="message">I need a 100 sq ft room painted in San Jose. Walls only. Next week. My name is Andy and my phone is 408-555-1234. How much does it cost?</textarea>
+
+  <br />
+
+  <button class="primary" onclick="sendMessage()">Send</button>
+  <button class="voice" onclick="startVoiceInput()">🎙 Start Voice Input</button>
+  <button class="danger" onclick="stopVoiceInput()">Stop Voice</button>
+  <button onclick="newCustomer()">New Customer</button>
+  <button onclick="loadLeads()">Load Saved Leads</button>
+  <button onclick="clearChat()">Clear Chat</button>
+
+  <div class="status" id="voiceStatus">Voice status: idle</div>
+  <div class="status" id="latencyStatus">Latency: not measured yet</div>
+
+  <div class="chat-history" id="chatHistory">
+    <strong>Conversation History:</strong>
+    <div id="messages"></div>
+  </div>
+
+  <div class="box">
+    <strong>Latest Receptionist Reply:</strong>
+    <div id="reply"></div>
+  </div>
+
+  <div class="box">
+    <strong>Extracted Lead:</strong>
+    <pre id="lead"></pre>
+  </div>
+
+  <div class="box">
+    <strong>Saved Leads Dashboard:</strong>
+    <div id="savedLeads"></div>
+  </div>
+
+  <script>
+    let sessionId = "customer-" + Date.now();
+    let recognition = null;
+    let isListening = false;
+
+    document.getElementById("sessionId").innerText = sessionId;
+
+    function newCustomer() {
+      sessionId = "customer-" + Date.now();
+
+      document.getElementById("sessionId").innerText = sessionId;
+      document.getElementById("message").value = "";
+      document.getElementById("reply").innerText = "";
+      document.getElementById("lead").innerText = "";
+      document.getElementById("messages").innerHTML = "";
+      document.getElementById("voiceStatus").innerText = "Voice status: idle";
+      document.getElementById("latencyStatus").innerText = "Latency: not measured yet";
+
+      stopSpeaking();
+      stopVoiceInput();
+
+      document.getElementById("message").focus();
+    }
+
+    function clearChat() {
+      document.getElementById("messages").innerHTML = "";
+      document.getElementById("reply").innerText = "";
+      document.getElementById("lead").innerText = "";
+      document.getElementById("latencyStatus").innerText = "Latency: not measured yet";
+    }
+
+    function isValidMessage(message) {
+      const cleaned = message.trim();
+
+      if (!cleaned) {
+        return false;
+      }
+
+      if (cleaned.length < 5) {
+        return false;
+      }
+
+      return true;
+    }
+
+    function addMessageToChat(sender, text, type) {
+      const messagesDiv = document.getElementById("messages");
+
+      const messageDiv = document.createElement("div");
+      messageDiv.className = "chat-message " + type;
+
+      const labelDiv = document.createElement("div");
+      labelDiv.className = "label";
+      labelDiv.innerText = sender + ":";
+
+      const textDiv = document.createElement("div");
+      textDiv.innerText = text;
+
+      messageDiv.appendChild(labelDiv);
+      messageDiv.appendChild(textDiv);
+      messagesDiv.appendChild(messageDiv);
+
+      const chatHistory = document.getElementById("chatHistory");
+      chatHistory.scrollTop = chatHistory.scrollHeight;
+    }
+
+    function updateLatencyStatus(latencyMs) {
+      const latencyStatus = document.getElementById("latencyStatus");
+
+      let label = "";
+      let cssClass = "";
+
+      if (latencyMs < 500) {
+        label = "very fast";
+        cssClass = "latency-good";
+      } else if (latencyMs < 1500) {
+        label = "good";
+        cssClass = "latency-good";
+      } else if (latencyMs < 2500) {
+        label = "acceptable";
+        cssClass = "latency-ok";
+      } else {
+        label = "slow";
+        cssClass = "latency-slow";
+      }
+
+      latencyStatus.innerHTML =
+        "Backend round-trip latency: " +
+        "<span class='" + cssClass + "'>" +
+        latencyMs.toFixed(0) +
+        " ms (" +
+        label +
+        ")</span>";
+    }
+
+    async function sendMessage() {
+      const messageBox = document.getElementById("message");
+      const message = messageBox.value;
+
+      if (!isValidMessage(message)) {
+        document.getElementById("reply").innerHTML =
+          "<span class='error'>Invalid message. Please enter a real customer message.</span>";
+        return;
+      }
+
+      addMessageToChat("Customer", message, "customer");
+
+      try {
+        const requestStart = performance.now();
+
+        const response = await fetch("http://127.0.0.1:8000/chat", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            session_id: sessionId,
+            message: message
+          })
+        });
+
+        const requestEnd = performance.now();
+        const frontendLatencyMs = requestEnd - requestStart;
+
+        updateLatencyStatus(frontendLatencyMs);
+
+        if (!response.ok) {
+          document.getElementById("reply").innerHTML =
+            "<span class='error'>Invalid request. The backend did not accept this message.</span>";
+          return;
+        }
+
+        const data = await response.json();
+
+        document.getElementById("reply").innerText = data.reply;
+        document.getElementById("lead").innerText = JSON.stringify(data.lead, null, 2);
+
+        addMessageToChat("AI Receptionist", data.reply, "bot");
+
+        speakText(data.reply);
+
+        messageBox.value = "";
+        messageBox.focus();
+
+        if (data.ready_to_send_to_painter) {
+          loadLeads();
+        }
+
+      } catch (error) {
+        document.getElementById("reply").innerHTML =
+          "<span class='error'>Error: Could not connect to backend. Make sure uvicorn is running.</span>";
+
+        document.getElementById("latencyStatus").innerHTML =
+          "<span class='error'>Latency: failed to measure because backend connection failed.</span>";
+
+        console.error(error);
+      }
+    }
+
+    function formatBoolean(value) {
+      if (value === true) {
+        return "Yes";
+      }
+
+      if (value === false) {
+        return "No";
+      }
+
+      return "-";
+    }
+
+    function formatDate(value) {
+      if (!value) {
+        return "-";
+      }
+
+      try {
+        const date = new Date(value);
+        return date.toLocaleString();
+      } catch {
+        return value;
+      }
+    }
+
+    function formatNotes(notes) {
+      if (!notes || notes.length === 0) {
+        return "-";
+      }
+
+      if (Array.isArray(notes)) {
+        return notes.join("; ");
+      }
+
+      return String(notes);
+    }
+
+    function getStatusClass(status) {
+      const normalized = (status || "New").toLowerCase();
+
+      if (normalized === "new") {
+        return "status-new";
+      }
+
+      if (normalized === "contacted") {
+        return "status-contacted";
+      }
+
+      if (normalized === "scheduled") {
+        return "status-scheduled";
+      }
+
+      if (normalized === "closed") {
+        return "status-closed";
+      }
+
+      if (normalized === "lost") {
+        return "status-lost";
+      }
+
+      return "status-new";
+    }
+
+    function renderStatus(status) {
+      const safeStatus = status || "New";
+      const cssClass = getStatusClass(safeStatus);
+
+      return `<span class="status-pill ${cssClass}">${safeStatus}</span>`;
+    }
+
+    async function updateLeadStatus(leadId, status) {
+      try {
+        const response = await fetch(`http://127.0.0.1:8000/leads/${leadId}/status`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            status: status
+          })
+        });
+
+        if (!response.ok) {
+          alert("Failed to update lead status.");
+          return;
+        }
+
+        await loadLeads();
+
+      } catch (error) {
+        alert("Could not connect to backend.");
+        console.error(error);
+      }
+    }
+
+    function renderLeadsTable(leads) {
+      const savedLeadsDiv = document.getElementById("savedLeads");
+
+      if (!leads || leads.length === 0) {
+        savedLeadsDiv.innerHTML = "<div class='empty'>No saved leads yet.</div>";
+        return;
+      }
+
+      let html = `
+        <div class="lead-table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Status</th>
+                <th>Created</th>
+                <th>Name</th>
+                <th>Phone</th>
+                <th>City</th>
+                <th>Service</th>
+                <th>Size</th>
+                <th>Rooms</th>
+                <th>Walls Only</th>
+                <th>Ceiling</th>
+                <th>Trim</th>
+                <th>Timeline</th>
+                <th>Intent</th>
+                <th>Notes</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+      `;
+
+      for (const lead of leads) {
+        html += `
+          <tr>
+            <td>${lead.id ?? "-"}</td>
+            <td>${renderStatus(lead.status)}</td>
+            <td>${formatDate(lead.created_at)}</td>
+            <td>${lead.name ?? "-"}</td>
+            <td>${lead.phone ?? "-"}</td>
+            <td>${lead.city ?? "-"}</td>
+            <td><span class="pill">${lead.service ?? "-"}</span></td>
+            <td>${lead.room_size_sqft ? lead.room_size_sqft + " sq ft" : "-"}</td>
+            <td>${lead.rooms ?? "-"}</td>
+            <td>${formatBoolean(lead.walls_only)}</td>
+            <td>${formatBoolean(lead.ceiling)}</td>
+            <td>${formatBoolean(lead.trim)}</td>
+            <td>${lead.timeline ?? "-"}</td>
+            <td>${lead.intent ?? "-"}</td>
+            <td>${formatNotes(lead.notes)}</td>
+            <td class="actions">
+              <button class="small-button" onclick="updateLeadStatus(${lead.id}, 'New')">New</button>
+              <button class="small-button" onclick="updateLeadStatus(${lead.id}, 'Contacted')">Contacted</button>
+              <button class="small-button" onclick="updateLeadStatus(${lead.id}, 'Scheduled')">Scheduled</button>
+              <button class="small-button" onclick="updateLeadStatus(${lead.id}, 'Closed')">Closed</button>
+              <button class="small-button" onclick="updateLeadStatus(${lead.id}, 'Lost')">Lost</button>
+            </td>
+          </tr>
+        `;
+      }
+
+      html += `
+            </tbody>
+          </table>
+        </div>
+      `;
+
+      savedLeadsDiv.innerHTML = html;
+    }
+
+    async function loadLeads() {
+      try {
+        const response = await fetch("http://127.0.0.1:8000/leads");
+
+        if (!response.ok) {
+          document.getElementById("savedLeads").innerHTML =
+            "<span class='error'>Error: Could not load leads from backend.</span>";
+          return;
+        }
+
+        const data = await response.json();
+        renderLeadsTable(data);
+
+      } catch (error) {
+        document.getElementById("savedLeads").innerHTML =
+          "<span class='error'>Error: Could not load leads. Make sure backend is running.</span>";
+        console.error(error);
+      }
+    }
+
+    function speakText(text) {
+      if (!("speechSynthesis" in window)) {
+        document.getElementById("voiceStatus").innerText =
+          "Voice status: text-to-speech is not supported in this browser.";
+        return;
+      }
+
+      stopSpeaking();
+
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.rate = 1.0;
+      utterance.pitch = 1.0;
+      utterance.volume = 1.0;
+
+      utterance.onstart = function () {
+        document.getElementById("voiceStatus").innerText = "Voice status: speaking reply...";
+      };
+
+      utterance.onend = function () {
+        document.getElementById("voiceStatus").innerText = "Voice status: idle";
+      };
+
+      window.speechSynthesis.speak(utterance);
+    }
+
+    function stopSpeaking() {
+      if ("speechSynthesis" in window) {
+        window.speechSynthesis.cancel();
+      }
+    }
+
+    function startVoiceInput() {
+      const SpeechRecognition =
+        window.SpeechRecognition || window.webkitSpeechRecognition;
+
+      if (!SpeechRecognition) {
+        document.getElementById("voiceStatus").innerHTML =
+          "<span class='error'>Speech recognition is not supported in this browser. Try Chrome.</span>";
+        return;
+      }
+
+      stopSpeaking();
+
+      recognition = new SpeechRecognition();
+      recognition.lang = "en-US";
+      recognition.interimResults = false;
+      recognition.continuous = false;
+
+      recognition.onstart = function () {
+        isListening = true;
+        document.getElementById("voiceStatus").innerHTML =
+          "<span class='listening'>Voice status: listening...</span>";
+      };
+
+      recognition.onresult = function (event) {
+        const transcript = event.results[0][0].transcript;
+
+        document.getElementById("message").value = transcript;
+        document.getElementById("voiceStatus").innerText =
+          "Voice status: heard: " + transcript;
+
+        sendMessage();
+      };
+
+      recognition.onerror = function (event) {
+        document.getElementById("voiceStatus").innerHTML =
+          "<span class='error'>Voice error: " + event.error + "</span>";
+      };
+
+      recognition.onend = function () {
+        isListening = false;
+
+        if (!document.getElementById("voiceStatus").innerText.startsWith("Voice status: heard")) {
+          document.getElementById("voiceStatus").innerText = "Voice status: idle";
+        }
+      };
+
+      recognition.start();
+    }
+
+    function stopVoiceInput() {
+      if (recognition && isListening) {
+        recognition.stop();
+      }
+
+      isListening = false;
+      document.getElementById("voiceStatus").innerText = "Voice status: idle";
+    }
+
+    loadLeads();
+  </script>
+</body>
+</html>
