@@ -7,11 +7,7 @@ An AI-powered receptionist prototype for a painting business. The system can cha
 - FastAPI backend
 - Browser chat interface
 - Browser voice input/output
-<<<<<<< HEAD
-- Hybrid regex + LLM information extraction
-=======
 - Hybrid rule-based + AI patch extraction: fast rules for simple turns, AI fallback for messy/corrective turns
->>>>>>> 3895666 (Deploy AI receptionist)
 - Latency tracking
 - Multi-customer sessions
 - SQLite lead storage
@@ -20,8 +16,6 @@ An AI-powered receptionist prototype for a painting business. The system can cha
 - Twilio phone-call integration
 - ngrok webhook testing
 
-<<<<<<< HEAD
-=======
 
 ## Hybrid Talker / Reasoner Design
 
@@ -129,7 +123,6 @@ Uncheck **Live call mode** to verify your real model is connected. You should th
 Reasoner: Real AI / LLM patch | mode: smart/blocking
 ```
 
->>>>>>> 3895666 (Deploy AI receptionist)
 ## Project Structure
 
 ```text
@@ -180,12 +173,6 @@ word2number
 
 ## Environment Variables
 
-<<<<<<< HEAD
-Create a `.env` file in the project root:
-
-```text
-OPENAI_API_KEY=your_openai_api_key_here
-=======
 The app works without an API key. In that mode, it uses fast rules plus a small local heuristic patcher for common corrections.
 
 For the full AI fallback, create a `.env` file in the project root:
@@ -201,7 +188,6 @@ You can also use Qwen or another OpenAI-compatible server:
 OPENAI_BASE_URL=http://localhost:8000/v1
 OPENAI_API_KEY=local-dev-key
 OPENAI_MODEL=Qwen/Qwen3-30B-A3B-Instruct-2507
->>>>>>> 3895666 (Deploy AI receptionist)
 ```
 
 Do not upload `.env` to GitHub.
@@ -446,9 +432,6 @@ For phone testing:
 
 ```bash
 ngrok http 8000
-<<<<<<< HEAD
-```
-=======
 ```
 ## Upgrade notes
 
@@ -777,4 +760,3 @@ TWILIO_USE_ELEVENLABS=true
 ```
 
 `TWILIO_AUTO_HANGUP=false` keeps the call open after each answer and lets Twilio gather the next caller turn. This prevents the bot from hanging up just because the lead looks complete.
->>>>>>> 3895666 (Deploy AI receptionist)

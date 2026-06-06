@@ -1,12 +1,5 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-<<<<<<< HEAD
-
-from app.models import CustomerMessage, ReceptionistResponse
-from app.receptionist import handle_message
-from app.database import init_db, get_all_leads, update_lead_status
-from app.voice import router as voice_router
-=======
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
 
@@ -16,16 +9,10 @@ from app.llm_extractor import extract_lead_patch, llm_available
 from app.database import init_db, get_all_call_records, get_all_leads, update_lead_status
 from app.voice import router as voice_router
 from app.tts import router as tts_router
->>>>>>> 3895666 (Deploy AI receptionist)
 
 
 app = FastAPI(title="AI Receptionist Prototype")
 
-<<<<<<< HEAD
-init_db()
-
-app.include_router(voice_router)
-=======
 # Serve files inside app/static at /static/...
 app.mount("/static", StaticFiles(directory="."), name="static")
 
@@ -33,7 +20,6 @@ init_db()
 
 app.include_router(voice_router)
 app.include_router(tts_router)
->>>>>>> 3895666 (Deploy AI receptionist)
 
 app.add_middleware(
     CORSMiddleware,
@@ -45,13 +31,10 @@ app.add_middleware(
 
 
 @app.get("/")
-<<<<<<< HEAD
-=======
 def home():
     return FileResponse("index.html")
 
 @app.get("/health")
->>>>>>> 3895666 (Deploy AI receptionist)
 def health_check():
     return {
         "status": "ok",
@@ -59,11 +42,6 @@ def health_check():
     }
 
 
-<<<<<<< HEAD
-@app.post("/chat", response_model=ReceptionistResponse)
-def chat(req: CustomerMessage):
-    return handle_message(req.session_id or "default", req.message)
-=======
 @app.post("/chat")
 def chat(req: CustomerMessage):
     """Chat endpoint.
@@ -136,7 +114,6 @@ def ai_cleanup(session_id: str):
         "patch": patch,
         "llm_configured": True,
     }
->>>>>>> 3895666 (Deploy AI receptionist)
 
 
 @app.get("/leads")
@@ -144,14 +121,11 @@ def get_leads():
     return get_all_leads()
 
 
-<<<<<<< HEAD
-=======
 @app.get("/call-records")
 def get_call_records():
     return get_all_call_records()
 
 
->>>>>>> 3895666 (Deploy AI receptionist)
 @app.post("/leads/{lead_id}/status")
 def update_status(lead_id: int, payload: dict):
     status = payload.get("status")

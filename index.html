@@ -143,8 +143,6 @@
       color: #444;
     }
 
-<<<<<<< HEAD
-=======
     .tts-config {
       margin-top: 10px;
       padding: 10px 12px;
@@ -155,7 +153,6 @@
       color: #7c2d12;
     }
 
->>>>>>> 3895666 (Deploy AI receptionist)
     .listening {
       color: #16a34a;
       font-weight: bold;
@@ -176,8 +173,6 @@
       font-weight: bold;
     }
 
-<<<<<<< HEAD
-=======
 
     .reasoner-status {
       margin-top: 8px;
@@ -208,7 +203,6 @@
       font-weight: bold;
     }
 
->>>>>>> 3895666 (Deploy AI receptionist)
     table {
       width: 100%;
       border-collapse: collapse;
@@ -313,11 +307,6 @@
   <button onclick="newCustomer()">New Customer</button>
   <button onclick="loadLeads()">Load Saved Leads</button>
   <button onclick="clearChat()">Clear Chat</button>
-<<<<<<< HEAD
-
-  <div class="status" id="voiceStatus">Voice status: idle</div>
-  <div class="status" id="latencyStatus">Latency: not measured yet</div>
-=======
   <button onclick="runAiCleanup()">Run AI Cleanup</button>
   <button onclick="refreshSessionLead()">Refresh Live AI Result</button>
   <label style="margin-left: 12px; font-size: 14px;">
@@ -333,7 +322,6 @@
   <div class="tts-config" id="ttsStatus">ElevenLabs: checking configuration...</div>
   <div class="status" id="latencyStatus">Latency: not measured yet</div>
   <div class="reasoner-status" id="reasonerStatus">Reasoner: not run yet</div>
->>>>>>> 3895666 (Deploy AI receptionist)
 
   <div class="chat-history" id="chatHistory">
     <strong>Conversation History:</strong>
@@ -359,12 +347,9 @@
     let sessionId = "customer-" + Date.now();
     let recognition = null;
     let isListening = false;
-<<<<<<< HEAD
-=======
     let backgroundPollTimer = null;
     let currentAudio = null;
     let elevenLabsConfigured = false;
->>>>>>> 3895666 (Deploy AI receptionist)
 
     document.getElementById("sessionId").innerText = sessionId;
 
@@ -378,10 +363,7 @@
       document.getElementById("messages").innerHTML = "";
       document.getElementById("voiceStatus").innerText = "Voice status: idle";
       document.getElementById("latencyStatus").innerText = "Latency: not measured yet";
-<<<<<<< HEAD
-=======
       document.getElementById("reasonerStatus").innerText = "Reasoner: not run yet";
->>>>>>> 3895666 (Deploy AI receptionist)
 
       stopSpeaking();
       stopVoiceInput();
@@ -394,10 +376,7 @@
       document.getElementById("reply").innerText = "";
       document.getElementById("lead").innerText = "";
       document.getElementById("latencyStatus").innerText = "Latency: not measured yet";
-<<<<<<< HEAD
-=======
       document.getElementById("reasonerStatus").innerText = "Reasoner: not run yet";
->>>>>>> 3895666 (Deploy AI receptionist)
     }
 
     function isValidMessage(message) {
@@ -407,14 +386,10 @@
         return false;
       }
 
-<<<<<<< HEAD
-      if (cleaned.length < 5) {
-=======
       // Real callers often answer with short valid messages like "Andy", "yes",
       // "no", or "2". Let the backend/AI extractor decide whether a short
       // message is meaningful instead of blocking it in the browser.
       if (cleaned.length < 2) {
->>>>>>> 3895666 (Deploy AI receptionist)
         return false;
       }
 
@@ -471,8 +446,6 @@
         ")</span>";
     }
 
-<<<<<<< HEAD
-=======
 
     function updateReasonerStatus(metrics) {
       const reasonerStatus = document.getElementById("reasonerStatus");
@@ -569,7 +542,6 @@
         .replace(/'/g, "&#039;");
     }
 
->>>>>>> 3895666 (Deploy AI receptionist)
     async function sendMessage() {
       const messageBox = document.getElementById("message");
       const message = messageBox.value;
@@ -592,12 +564,8 @@
           },
           body: JSON.stringify({
             session_id: sessionId,
-<<<<<<< HEAD
-            message: message
-=======
             message: message,
             live_mode: document.getElementById("liveMode").checked
->>>>>>> 3895666 (Deploy AI receptionist)
           })
         });
 
@@ -607,14 +575,9 @@
         updateLatencyStatus(frontendLatencyMs);
 
         if (!response.ok) {
-<<<<<<< HEAD
-          document.getElementById("reply").innerHTML =
-            "<span class='error'>Invalid request. The backend did not accept this message.</span>";
-=======
           let errorText = await response.text();
           document.getElementById("reply").innerHTML =
             `<span class='error'>Backend error (${response.status}). ${escapeHtml(errorText.slice(0, 500))}</span>`;
->>>>>>> 3895666 (Deploy AI receptionist)
           return;
         }
 
@@ -622,13 +585,10 @@
 
         document.getElementById("reply").innerText = data.reply;
         document.getElementById("lead").innerText = JSON.stringify(data.lead, null, 2);
-<<<<<<< HEAD
-=======
         updateReasonerStatus(data.metrics);
         if (data.metrics && data.metrics.background_llm_started) {
           scheduleBackgroundRefresh();
         }
->>>>>>> 3895666 (Deploy AI receptionist)
 
         addMessageToChat("AI Receptionist", data.reply, "bot");
 
@@ -652,8 +612,6 @@
       }
     }
 
-<<<<<<< HEAD
-=======
     function scheduleBackgroundRefresh() {
       if (backgroundPollTimer) {
         clearTimeout(backgroundPollTimer);
@@ -710,7 +668,6 @@
       }
     }
 
->>>>>>> 3895666 (Deploy AI receptionist)
     function formatBoolean(value) {
       if (value === true) {
         return "Yes";
@@ -821,11 +778,8 @@
               <tr>
                 <th>ID</th>
                 <th>Status</th>
-<<<<<<< HEAD
-=======
                 <th>Priority</th>
                 <th>Score</th>
->>>>>>> 3895666 (Deploy AI receptionist)
                 <th>Created</th>
                 <th>Name</th>
                 <th>Phone</th>
@@ -837,12 +791,9 @@
                 <th>Ceiling</th>
                 <th>Trim</th>
                 <th>Timeline</th>
-<<<<<<< HEAD
-=======
                 <th>Callback</th>
                 <th>Scope</th>
                 <th>Photos</th>
->>>>>>> 3895666 (Deploy AI receptionist)
                 <th>Intent</th>
                 <th>Notes</th>
                 <th>Actions</th>
@@ -856,11 +807,8 @@
           <tr>
             <td>${lead.id ?? "-"}</td>
             <td>${renderStatus(lead.status)}</td>
-<<<<<<< HEAD
-=======
             <td><span class="pill">${lead.lead_priority ?? "Normal"}</span></td>
             <td>${lead.lead_score ?? "-"}</td>
->>>>>>> 3895666 (Deploy AI receptionist)
             <td>${formatDate(lead.created_at)}</td>
             <td>${lead.name ?? "-"}</td>
             <td>${lead.phone ?? "-"}</td>
@@ -872,12 +820,9 @@
             <td>${formatBoolean(lead.ceiling)}</td>
             <td>${formatBoolean(lead.trim)}</td>
             <td>${lead.timeline ?? "-"}</td>
-<<<<<<< HEAD
-=======
             <td>${lead.preferred_callback_time ?? "-"}</td>
             <td>${lead.project_scope ?? "-"}</td>
             <td>${formatBoolean(lead.photos_available)}</td>
->>>>>>> 3895666 (Deploy AI receptionist)
             <td>${lead.intent ?? "-"}</td>
             <td>${formatNotes(lead.notes)}</td>
             <td class="actions">
@@ -920,9 +865,6 @@
       }
     }
 
-<<<<<<< HEAD
-    function speakText(text) {
-=======
     async function loadTtsConfig() {
       try {
         const response = await fetch("http://127.0.0.1:8000/tts/config");
@@ -1064,7 +1006,6 @@
     }
 
     function speakWithBrowser(text) {
->>>>>>> 3895666 (Deploy AI receptionist)
       if (!("speechSynthesis" in window)) {
         document.getElementById("voiceStatus").innerText =
           "Voice status: text-to-speech is not supported in this browser.";
@@ -1079,11 +1020,7 @@
       utterance.volume = 1.0;
 
       utterance.onstart = function () {
-<<<<<<< HEAD
-        document.getElementById("voiceStatus").innerText = "Voice status: speaking reply...";
-=======
         document.getElementById("voiceStatus").innerText = "Voice status: speaking reply with browser voice...";
->>>>>>> 3895666 (Deploy AI receptionist)
       };
 
       utterance.onend = function () {
@@ -1094,27 +1031,21 @@
     }
 
     function stopSpeaking() {
-<<<<<<< HEAD
-=======
       if (currentAudio) {
         currentAudio.pause();
         currentAudio.currentTime = 0;
         currentAudio = null;
       }
 
->>>>>>> 3895666 (Deploy AI receptionist)
       if ("speechSynthesis" in window) {
         window.speechSynthesis.cancel();
       }
     }
 
-<<<<<<< HEAD
-=======
     async function testElevenLabsVoice() {
       await speakText("Hi, this is the painting receptionist. How can I help today?");
     }
 
->>>>>>> 3895666 (Deploy AI receptionist)
     function startVoiceInput() {
       const SpeechRecognition =
         window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -1173,10 +1104,7 @@
       document.getElementById("voiceStatus").innerText = "Voice status: idle";
     }
 
-<<<<<<< HEAD
-=======
     loadTtsConfig();
->>>>>>> 3895666 (Deploy AI receptionist)
     loadLeads();
   </script>
 </body>
