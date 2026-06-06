@@ -81,14 +81,28 @@ def _cache_key(text: str, voice_id: str, model_id: str, output_format: str) -> s
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
 
-def _elevenlabs_request(path: str, method: str = "GET", body: Optional[dict] = None, timeout: float = 15):
+def _elevenlabs_request(
+    path: str,
+    method: str = "GET",
+    body: Optional[dict] = None,
+    timeout: float = 15,
+    accept: str = "application/json",
+):
+    """Call ElevenLabs and return (status, content_type, bytes).
+
+    This helper intentionally returns detailed upstream errors so the demo UI
+    can show whether the issue is an invalid key, quota, model access, etc.
+    """
     api_key = _env("ELEVENLABS_API_KEY")
     if not api_key:
         raise HTTPException(status_code=500, detail="ELEVENLABS_API_KEY is not configured")
 
     url = "https://api.elevenlabs.io" + path
     payload = None if body is None else json.dumps(body).encode("utf-8")
-    headers = {"xi-api-key": api_key}
+    headers = {
+        "xi-api-key": api_key,
+        "Accept": accept,
+    }
     if body is not None:
         headers["Content-Type"] = "application/json"
 
@@ -103,7 +117,84 @@ def _elevenlabs_request(path: str, method: str = "GET", body: Optional[dict] = N
         # Preserve the upstream status code for debugging instead of hiding it as generic 500.
         raise HTTPException(status_code=exc.code, detail=f"ElevenLabs API error {exc.code}: {detail}")
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"ElevenLabs request failed: {type(exc).__name__}: {str(exc)[:500]}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"ElevenLabs request failed: {type(exc).__name__}: {str(exc)[:500]}",
+        )
+
+
+def _parse_json_response(data: bytes, content_type: str, source: str) -> dict:
+    """Parse JSON and include a body preview if ElevenLabs returns text/HTML."""
+    raw_text = data.decode("utf-8", errors="replace")
+    try:
+        parsed = json.loads(raw_text)
+    except Exception:
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "message": f"Could not parse ElevenLabs {source} response",
+                "content_type": content_type,
+                "body_preview": raw_text[:1000],
+            },
+        )
+
+    if not isinstance(parsed, dict):
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "message": f"ElevenLabs {source} response was not a JSON object",
+                "content_type": content_type,
+                "body_preview": raw_text[:1000],
+            },
+        )
+
+    return parsed
+
+
+def _extract_voices(parsed: dict) -> list[dict]:
+    """Support both newer v2 and legacy v1 voices response shapes."""
+    voices = parsed.get("voices")
+    if isinstance(voices, list):
+        return voices
+
+    # Defensive fallback in case an SDK/proxy shape wraps data differently.
+    data = parsed.get("data")
+    if isinstance(data, dict) and isinstance(data.get("voices"), list):
+        return data["voices"]
+    if isinstance(data, list):
+        return data
+
+    raise HTTPException(
+        status_code=500,
+        detail={
+            "message": "ElevenLabs voices response did not contain a voices list",
+            "keys": list(parsed.keys()),
+            "body_preview": json.dumps(parsed)[:1000],
+        },
+    )
+
+
+def fetch_elevenlabs_voices() -> list[dict]:
+    """Fetch available ElevenLabs voices.
+
+    Prefer the newer /v2/voices endpoint. If that is unavailable for an account
+    or returns a legacy-style issue, fall back to /v1/voices.
+    """
+    # v2 endpoint supports pagination; page_size keeps the response small.
+    v2_path = "/v2/voices?" + urlencode({"page_size": 100})
+    try:
+        _status, content_type, data = _elevenlabs_request(v2_path, timeout=15)
+        parsed = _parse_json_response(data, content_type, "v2 voices")
+        return _extract_voices(parsed)
+    except HTTPException as v2_error:
+        # Some accounts or older deployments may still behave better on v1.
+        # Try v1 before surfacing the v2 error.
+        try:
+            _status, content_type, data = _elevenlabs_request("/v1/voices", timeout=15)
+            parsed = _parse_json_response(data, content_type, "v1 voices")
+            return _extract_voices(parsed)
+        except HTTPException:
+            raise v2_error
 
 
 @router.get("/config")
@@ -124,20 +215,18 @@ def get_tts_config():
 @router.get("/voices")
 def list_voices():
     """List available ElevenLabs voices so the student can verify/copy a valid voice_id."""
-    status, content_type, data = _elevenlabs_request("/v1/voices", timeout=15)
-    try:
-        parsed = json.loads(data.decode("utf-8"))
-    except Exception:
-        raise HTTPException(status_code=500, detail="Could not parse ElevenLabs voices response")
-
-    voices = []
-    for v in parsed.get("voices", []):
-        voices.append({
-            "name": v.get("name"),
-            "voice_id": v.get("voice_id"),
-            "category": v.get("category"),
-        })
-    return {"voices": voices, "count": len(voices)}
+    voices = fetch_elevenlabs_voices()
+    return {
+        "voices": [
+            {
+                "name": v.get("name"),
+                "voice_id": v.get("voice_id"),
+                "category": v.get("category"),
+            }
+            for v in voices
+        ],
+        "count": len(voices),
+    }
 
 
 @router.get("/diagnose")
@@ -150,18 +239,17 @@ def diagnose_tts():
         return JSONResponse(status_code=500, content={"ok": False, "error": "ELEVENLABS_VOICE_ID missing", "config": config})
 
     # Check voices endpoint first; it gives a clearer error for bad API keys.
-    voices = list_voices()
+    voices = fetch_elevenlabs_voices()
     configured_voice = _env("ELEVENLABS_VOICE_ID")
-    found = any(v.get("voice_id") == configured_voice for v in voices.get("voices", []))
+    found = any(v.get("voice_id") == configured_voice for v in voices)
 
     return {
         "ok": True,
         "config": config,
         "voice_found_in_account": found,
-        "available_voice_count": voices.get("count", 0),
+        "available_voice_count": len(voices),
         "hint": "If voice_found_in_account is false, copy a valid voice_id from /tts/voices or ElevenLabs → Voices → Copy voice ID.",
     }
-
 
 
 def generate_elevenlabs_audio_bytes(text: str, voice_id: Optional[str] = None) -> tuple[bytes, dict[str, str]]:
@@ -243,9 +331,14 @@ def generate_elevenlabs_audio_bytes(text: str, voice_id: Optional[str] = None) -
         raise HTTPException(status_code=500, detail=f"ElevenLabs TTS failed: {type(exc).__name__}: {str(exc)[:500]}")
 
     latency_ms = int((time.perf_counter() - started) * 1000)
-    if not audio_bytes or b"audio" not in (content_type or "audio/mpeg").encode("utf-8"):
+    content_type_lower = (content_type or "").lower()
+
+    if not audio_bytes or ("audio" not in content_type_lower and "mpeg" not in content_type_lower and "octet-stream" not in content_type_lower):
         preview = audio_bytes[:500].decode("utf-8", errors="replace")
-        raise HTTPException(status_code=500, detail=f"ElevenLabs did not return audio. Content-Type={content_type}. Body={preview}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"ElevenLabs did not return audio. Content-Type={content_type}. Body={preview}",
+        )
 
     if cache_path is not None:
         try:
