@@ -143,6 +143,19 @@
       color: #444;
     }
 
+<<<<<<< HEAD
+=======
+    .tts-config {
+      margin-top: 10px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      background: #fff7ed;
+      border: 1px solid #fed7aa;
+      font-size: 14px;
+      color: #7c2d12;
+    }
+
+>>>>>>> 3895666 (Deploy AI receptionist)
     .listening {
       color: #16a34a;
       font-weight: bold;
@@ -163,6 +176,39 @@
       font-weight: bold;
     }
 
+<<<<<<< HEAD
+=======
+
+    .reasoner-status {
+      margin-top: 8px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      font-size: 14px;
+    }
+
+    .reasoner-rule {
+      color: #166534;
+      font-weight: bold;
+    }
+
+    .reasoner-heuristic {
+      color: #92400e;
+      font-weight: bold;
+    }
+
+    .reasoner-llm {
+      color: #6d28d9;
+      font-weight: bold;
+    }
+
+    .reasoner-error {
+      color: #b91c1c;
+      font-weight: bold;
+    }
+
+>>>>>>> 3895666 (Deploy AI receptionist)
     table {
       width: 100%;
       border-collapse: collapse;
@@ -267,9 +313,27 @@
   <button onclick="newCustomer()">New Customer</button>
   <button onclick="loadLeads()">Load Saved Leads</button>
   <button onclick="clearChat()">Clear Chat</button>
+<<<<<<< HEAD
 
   <div class="status" id="voiceStatus">Voice status: idle</div>
   <div class="status" id="latencyStatus">Latency: not measured yet</div>
+=======
+  <button onclick="runAiCleanup()">Run AI Cleanup</button>
+  <button onclick="refreshSessionLead()">Refresh Live AI Result</button>
+  <label style="margin-left: 12px; font-size: 14px;">
+    <input type="checkbox" id="liveMode" checked /> Live call mode (fast, defer real AI)
+  </label>
+  <label style="margin-left: 12px; font-size: 14px;">
+    <input type="checkbox" id="elevenLabsVoice" checked /> Use ElevenLabs voice
+  </label>
+  <button onclick="testElevenLabsVoice()">Test ElevenLabs Voice</button>
+  <button onclick="diagnoseElevenLabs()">Diagnose ElevenLabs</button>
+
+  <div class="status" id="voiceStatus">Voice status: idle</div>
+  <div class="tts-config" id="ttsStatus">ElevenLabs: checking configuration...</div>
+  <div class="status" id="latencyStatus">Latency: not measured yet</div>
+  <div class="reasoner-status" id="reasonerStatus">Reasoner: not run yet</div>
+>>>>>>> 3895666 (Deploy AI receptionist)
 
   <div class="chat-history" id="chatHistory">
     <strong>Conversation History:</strong>
@@ -295,6 +359,12 @@
     let sessionId = "customer-" + Date.now();
     let recognition = null;
     let isListening = false;
+<<<<<<< HEAD
+=======
+    let backgroundPollTimer = null;
+    let currentAudio = null;
+    let elevenLabsConfigured = false;
+>>>>>>> 3895666 (Deploy AI receptionist)
 
     document.getElementById("sessionId").innerText = sessionId;
 
@@ -308,6 +378,10 @@
       document.getElementById("messages").innerHTML = "";
       document.getElementById("voiceStatus").innerText = "Voice status: idle";
       document.getElementById("latencyStatus").innerText = "Latency: not measured yet";
+<<<<<<< HEAD
+=======
+      document.getElementById("reasonerStatus").innerText = "Reasoner: not run yet";
+>>>>>>> 3895666 (Deploy AI receptionist)
 
       stopSpeaking();
       stopVoiceInput();
@@ -320,6 +394,10 @@
       document.getElementById("reply").innerText = "";
       document.getElementById("lead").innerText = "";
       document.getElementById("latencyStatus").innerText = "Latency: not measured yet";
+<<<<<<< HEAD
+=======
+      document.getElementById("reasonerStatus").innerText = "Reasoner: not run yet";
+>>>>>>> 3895666 (Deploy AI receptionist)
     }
 
     function isValidMessage(message) {
@@ -329,7 +407,14 @@
         return false;
       }
 
+<<<<<<< HEAD
       if (cleaned.length < 5) {
+=======
+      // Real callers often answer with short valid messages like "Andy", "yes",
+      // "no", or "2". Let the backend/AI extractor decide whether a short
+      // message is meaningful instead of blocking it in the browser.
+      if (cleaned.length < 2) {
+>>>>>>> 3895666 (Deploy AI receptionist)
         return false;
       }
 
@@ -386,6 +471,105 @@
         ")</span>";
     }
 
+<<<<<<< HEAD
+=======
+
+    function updateReasonerStatus(metrics) {
+      const reasonerStatus = document.getElementById("reasonerStatus");
+
+      if (!metrics) {
+        reasonerStatus.innerText = "Reasoner: no debug metadata returned";
+        return;
+      }
+
+      const source = metrics.reasoner_source || "rule";
+      const used = metrics.reasoner_used === true;
+      const trigger = metrics.reasoner_trigger || "rules_sufficient";
+      const confidence = metrics.reasoner_confidence;
+      const latency = metrics.reasoner_latency_ms || 0;
+      const reason = metrics.reasoner_reason || "";
+      const llmConfigured = metrics.llm_configured === true;
+      const llmError = metrics.llm_error || "";
+      const llmDeferred = metrics.llm_deferred === true;
+      const liveMode = metrics.live_mode === true;
+      const backgroundStarted = metrics.background_llm_started === true;
+      const backgroundStatus = metrics.background_reasoner_status || null;
+      const talkerSource = metrics.talker_source || "none";
+      const talkerUsed = metrics.talker_used === true;
+      const talkerLatency = metrics.talker_latency_ms || 0;
+      const talkerReason = metrics.talker_reason || "";
+      const cacheHit = metrics.cache_hit === true;
+      const cacheKind = metrics.cache_kind || "";
+
+      let cssClass = "reasoner-rule";
+      let label = "Rule layer";
+
+      if (source === "llm_first") {
+        cssClass = "reasoner-llm";
+        label = "LLM-first live receptionist";
+      } else if (source === "llm") {
+        cssClass = "reasoner-llm";
+        label = "Real AI / LLM patch";
+      } else if (source === "heuristic") {
+        cssClass = "reasoner-heuristic";
+        if (llmDeferred) {
+          label = "Fast heuristic patch — real AI deferred";
+        } else {
+          label = llmConfigured ? "Heuristic fallback patch after LLM failure" : "Heuristic fallback patch — real AI not configured";
+        }
+      } else if (source === "faq_cache") {
+        cssClass = "reasoner-rule";
+        label = "FAQ cache";
+      } else if (source === "echo_guard") {
+        cssClass = "reasoner-rule";
+        label = "Echo guard";
+      } else if (source === "error") {
+        cssClass = "reasoner-error";
+        label = "Reasoner error";
+      }
+
+      const confidenceText = confidence === null || confidence === undefined
+        ? ""
+        : ` | confidence: ${Number(confidence).toFixed(2)}`;
+
+      const latencyText = used ? ` | reasoner latency: ${latency} ms` : "";
+      const configText = used ? ` | real AI configured: ${llmConfigured ? "yes" : "no"}` : "";
+      const modeText = used ? ` | mode: ${liveMode ? "live/fast" : "smart/blocking"}` : "";
+      const deferredText = llmDeferred ? (backgroundStarted ? " | LLM running in background" : " | LLM deferred for cleanup") : "";
+      const backgroundText = backgroundStatus ? ` | background: ${escapeHtml(backgroundStatus.status || "unknown")}` : "";
+      const cacheText = cacheHit ? ` | cache hit${cacheKind ? ": " + escapeHtml(cacheKind) : ""}` : "";
+      const reasonText = reason ? `<br><span>Why: ${escapeHtml(reason)}</span>` : "";
+      const talkerText = talkerSource && talkerSource !== "none"
+        ? `<br><span>Talker: ${escapeHtml(talkerSource)}${talkerUsed ? " applied" : ""} | latency: ${talkerLatency} ms${talkerReason ? " | " + escapeHtml(talkerReason) : ""}</span>`
+        : "";
+      const errorText = llmError ? `<br><span class="reasoner-error">LLM error: ${escapeHtml(llmError)}</span>` : "";
+
+      reasonerStatus.innerHTML =
+        `Reasoner: <span class="${cssClass}">${label}</span>` +
+        ` | source: ${escapeHtml(source)}` +
+        ` | trigger: ${escapeHtml(trigger)}` +
+        confidenceText +
+        latencyText +
+        configText +
+        modeText +
+        deferredText +
+        backgroundText +
+        cacheText +
+        reasonText +
+        talkerText +
+        errorText;
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+>>>>>>> 3895666 (Deploy AI receptionist)
     async function sendMessage() {
       const messageBox = document.getElementById("message");
       const message = messageBox.value;
@@ -408,7 +592,12 @@
           },
           body: JSON.stringify({
             session_id: sessionId,
+<<<<<<< HEAD
             message: message
+=======
+            message: message,
+            live_mode: document.getElementById("liveMode").checked
+>>>>>>> 3895666 (Deploy AI receptionist)
           })
         });
 
@@ -418,8 +607,14 @@
         updateLatencyStatus(frontendLatencyMs);
 
         if (!response.ok) {
+<<<<<<< HEAD
           document.getElementById("reply").innerHTML =
             "<span class='error'>Invalid request. The backend did not accept this message.</span>";
+=======
+          let errorText = await response.text();
+          document.getElementById("reply").innerHTML =
+            `<span class='error'>Backend error (${response.status}). ${escapeHtml(errorText.slice(0, 500))}</span>`;
+>>>>>>> 3895666 (Deploy AI receptionist)
           return;
         }
 
@@ -427,6 +622,13 @@
 
         document.getElementById("reply").innerText = data.reply;
         document.getElementById("lead").innerText = JSON.stringify(data.lead, null, 2);
+<<<<<<< HEAD
+=======
+        updateReasonerStatus(data.metrics);
+        if (data.metrics && data.metrics.background_llm_started) {
+          scheduleBackgroundRefresh();
+        }
+>>>>>>> 3895666 (Deploy AI receptionist)
 
         addMessageToChat("AI Receptionist", data.reply, "bot");
 
@@ -450,6 +652,65 @@
       }
     }
 
+<<<<<<< HEAD
+=======
+    function scheduleBackgroundRefresh() {
+      if (backgroundPollTimer) {
+        clearTimeout(backgroundPollTimer);
+      }
+      backgroundPollTimer = setTimeout(refreshSessionLead, 3000);
+    }
+
+    async function refreshSessionLead() {
+      try {
+        const response = await fetch(`http://127.0.0.1:8000/sessions/${sessionId}/lead`);
+        const data = await response.json();
+        if (data.lead) {
+          document.getElementById("lead").innerText = JSON.stringify(data.lead, null, 2);
+        }
+        if (data.background_reasoner_status) {
+          const st = data.background_reasoner_status;
+          document.getElementById("reasonerStatus").innerHTML =
+            `Background AI: ${escapeHtml(st.status || "unknown")}` +
+            (st.latency_ms ? ` | latency: ${st.latency_ms} ms` : "") +
+            (st.source ? ` | source: ${escapeHtml(st.source)}` : "") +
+            (st.reason ? `<br><span>Why: ${escapeHtml(st.reason)}</span>` : "");
+          if (st.status === "running") {
+            scheduleBackgroundRefresh();
+          }
+        }
+      } catch (error) {
+        console.error(error);
+      }
+    }
+
+    async function runAiCleanup() {
+      try {
+        const requestStart = performance.now();
+        const response = await fetch(`http://127.0.0.1:8000/sessions/${sessionId}/ai-cleanup`, {
+          method: "POST"
+        });
+        const requestEnd = performance.now();
+        const data = await response.json();
+
+        if (!data.success) {
+          document.getElementById("reasonerStatus").innerHTML =
+            `<span class='reasoner-error'>AI cleanup failed: ${escapeHtml(data.error || "unknown error")}</span>`;
+          return;
+        }
+
+        document.getElementById("lead").innerText = JSON.stringify(data.lead, null, 2);
+        document.getElementById("reasonerStatus").innerHTML =
+          `Post-call AI cleanup complete in ${Math.round(requestEnd - requestStart)} ms. ` +
+          `Patch source: ${escapeHtml(data.patch?.source || "llm")}.`;
+      } catch (error) {
+        document.getElementById("reasonerStatus").innerHTML =
+          `<span class='reasoner-error'>AI cleanup failed to connect to backend.</span>`;
+        console.error(error);
+      }
+    }
+
+>>>>>>> 3895666 (Deploy AI receptionist)
     function formatBoolean(value) {
       if (value === true) {
         return "Yes";
@@ -560,6 +821,11 @@
               <tr>
                 <th>ID</th>
                 <th>Status</th>
+<<<<<<< HEAD
+=======
+                <th>Priority</th>
+                <th>Score</th>
+>>>>>>> 3895666 (Deploy AI receptionist)
                 <th>Created</th>
                 <th>Name</th>
                 <th>Phone</th>
@@ -571,6 +837,12 @@
                 <th>Ceiling</th>
                 <th>Trim</th>
                 <th>Timeline</th>
+<<<<<<< HEAD
+=======
+                <th>Callback</th>
+                <th>Scope</th>
+                <th>Photos</th>
+>>>>>>> 3895666 (Deploy AI receptionist)
                 <th>Intent</th>
                 <th>Notes</th>
                 <th>Actions</th>
@@ -584,6 +856,11 @@
           <tr>
             <td>${lead.id ?? "-"}</td>
             <td>${renderStatus(lead.status)}</td>
+<<<<<<< HEAD
+=======
+            <td><span class="pill">${lead.lead_priority ?? "Normal"}</span></td>
+            <td>${lead.lead_score ?? "-"}</td>
+>>>>>>> 3895666 (Deploy AI receptionist)
             <td>${formatDate(lead.created_at)}</td>
             <td>${lead.name ?? "-"}</td>
             <td>${lead.phone ?? "-"}</td>
@@ -595,6 +872,12 @@
             <td>${formatBoolean(lead.ceiling)}</td>
             <td>${formatBoolean(lead.trim)}</td>
             <td>${lead.timeline ?? "-"}</td>
+<<<<<<< HEAD
+=======
+            <td>${lead.preferred_callback_time ?? "-"}</td>
+            <td>${lead.project_scope ?? "-"}</td>
+            <td>${formatBoolean(lead.photos_available)}</td>
+>>>>>>> 3895666 (Deploy AI receptionist)
             <td>${lead.intent ?? "-"}</td>
             <td>${formatNotes(lead.notes)}</td>
             <td class="actions">
@@ -637,7 +920,151 @@
       }
     }
 
+<<<<<<< HEAD
     function speakText(text) {
+=======
+    async function loadTtsConfig() {
+      try {
+        const response = await fetch("http://127.0.0.1:8000/tts/config");
+        const data = await response.json();
+        elevenLabsConfigured = data.configured === true;
+
+        const checkbox = document.getElementById("elevenLabsVoice");
+        checkbox.disabled = !elevenLabsConfigured;
+        checkbox.checked = elevenLabsConfigured;
+
+        if (elevenLabsConfigured) {
+          document.getElementById("ttsStatus").innerText =
+            `ElevenLabs: ready | model: ${data.model} | audio cache: ${data.cache_enabled ? "on" : "off"}`;
+        } else {
+          document.getElementById("ttsStatus").innerText =
+            "ElevenLabs: not configured. Add ELEVENLABS_API_KEY and ELEVENLABS_VOICE_ID to .env, then restart the backend. Browser voice fallback is available.";
+        }
+      } catch (error) {
+        elevenLabsConfigured = false;
+        document.getElementById("elevenLabsVoice").disabled = true;
+        document.getElementById("elevenLabsVoice").checked = false;
+        document.getElementById("ttsStatus").innerHTML =
+          "<span class='error'>ElevenLabs: could not reach backend TTS config.</span>";
+        console.error(error);
+      }
+    }
+
+    async function speakText(text) {
+      const useElevenLabs =
+        document.getElementById("elevenLabsVoice") &&
+        document.getElementById("elevenLabsVoice").checked &&
+        elevenLabsConfigured;
+
+      if (useElevenLabs) {
+        const ok = await speakWithElevenLabs(text);
+        if (ok) {
+          return;
+        }
+
+        // Fallback if ElevenLabs fails during demo.
+        speakWithBrowser(text);
+        return;
+      }
+
+      speakWithBrowser(text);
+    }
+
+    async function diagnoseElevenLabs() {
+      try {
+        document.getElementById("voiceStatus").innerText = "Voice status: diagnosing ElevenLabs...";
+        const response = await fetch("http://127.0.0.1:8000/tts/diagnose");
+        const text = await response.text();
+        let data = null;
+        try { data = JSON.parse(text); } catch (e) {}
+
+        if (!response.ok) {
+          const detail = data && (data.detail || data.error) ? (data.detail || data.error) : text;
+          document.getElementById("voiceStatus").innerText =
+            `Voice status: ElevenLabs diagnose failed (${response.status}). ${String(detail).slice(0, 260)}`;
+          console.error("ElevenLabs diagnose failed:", detail);
+          return;
+        }
+
+        const found = data.voice_found_in_account ? "voice found" : "voice NOT found";
+        document.getElementById("voiceStatus").innerText =
+          `Voice status: ElevenLabs diagnose ok — ${found}, ${data.available_voice_count} voices available.`;
+        console.log("ElevenLabs diagnose:", data);
+      } catch (err) {
+        document.getElementById("voiceStatus").innerText =
+          "Voice status: ElevenLabs diagnose failed. Check backend terminal.";
+        console.error(err);
+      }
+    }
+
+    async function speakWithElevenLabs(text) {
+      if (!text || !text.trim()) {
+        return true;
+      }
+
+      stopSpeaking();
+      document.getElementById("voiceStatus").innerText = "Voice status: generating ElevenLabs voice...";
+
+      try {
+        const started = performance.now();
+        const response = await fetch("http://127.0.0.1:8000/tts/speak", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ text })
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          let detail = errorText;
+          try {
+            const parsed = JSON.parse(errorText);
+            detail = parsed.detail || errorText;
+          } catch (e) {}
+          document.getElementById("voiceStatus").innerText =
+            `Voice status: ElevenLabs failed (${response.status}). ${String(detail).slice(0, 220)}`;
+          console.error("ElevenLabs TTS failed:", response.status, detail);
+          return false;
+        }
+
+        const audioBlob = await response.blob();
+        const audioUrl = URL.createObjectURL(audioBlob);
+        const cacheHeader = response.headers.get("X-TTS-Cache") || "unknown";
+        const latency = Math.round(performance.now() - started);
+
+        currentAudio = new Audio(audioUrl);
+
+        currentAudio.onplay = function () {
+          document.getElementById("voiceStatus").innerText =
+            `Voice status: speaking with ElevenLabs... (${latency} ms, cache: ${cacheHeader})`;
+        };
+
+        currentAudio.onended = function () {
+          document.getElementById("voiceStatus").innerText = "Voice status: idle";
+          URL.revokeObjectURL(audioUrl);
+          currentAudio = null;
+        };
+
+        currentAudio.onerror = function () {
+          document.getElementById("voiceStatus").innerText =
+            "Voice status: ElevenLabs audio playback failed.";
+          URL.revokeObjectURL(audioUrl);
+          currentAudio = null;
+        };
+
+        await currentAudio.play();
+        return true;
+      } catch (err) {
+        document.getElementById("voiceStatus").innerText =
+          "Voice status: ElevenLabs failed, using browser voice fallback.";
+        console.error("ElevenLabs playback error:", err);
+        return false;
+      }
+    }
+
+    function speakWithBrowser(text) {
+>>>>>>> 3895666 (Deploy AI receptionist)
       if (!("speechSynthesis" in window)) {
         document.getElementById("voiceStatus").innerText =
           "Voice status: text-to-speech is not supported in this browser.";
@@ -652,7 +1079,11 @@
       utterance.volume = 1.0;
 
       utterance.onstart = function () {
+<<<<<<< HEAD
         document.getElementById("voiceStatus").innerText = "Voice status: speaking reply...";
+=======
+        document.getElementById("voiceStatus").innerText = "Voice status: speaking reply with browser voice...";
+>>>>>>> 3895666 (Deploy AI receptionist)
       };
 
       utterance.onend = function () {
@@ -663,11 +1094,27 @@
     }
 
     function stopSpeaking() {
+<<<<<<< HEAD
+=======
+      if (currentAudio) {
+        currentAudio.pause();
+        currentAudio.currentTime = 0;
+        currentAudio = null;
+      }
+
+>>>>>>> 3895666 (Deploy AI receptionist)
       if ("speechSynthesis" in window) {
         window.speechSynthesis.cancel();
       }
     }
 
+<<<<<<< HEAD
+=======
+    async function testElevenLabsVoice() {
+      await speakText("Hi, this is the painting receptionist. How can I help today?");
+    }
+
+>>>>>>> 3895666 (Deploy AI receptionist)
     function startVoiceInput() {
       const SpeechRecognition =
         window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -726,6 +1173,10 @@
       document.getElementById("voiceStatus").innerText = "Voice status: idle";
     }
 
+<<<<<<< HEAD
+=======
+    loadTtsConfig();
+>>>>>>> 3895666 (Deploy AI receptionist)
     loadLeads();
   </script>
 </body>
