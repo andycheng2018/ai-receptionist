@@ -2,7 +2,7 @@
 
 Architecture:
 Twilio phone number -> /twilio/voice -> <Gather speech>
-Caller speech -> /twilio/handle -> app.receptionist.handle_message
+Caller speech -> /twilio/handle -> app.llm_receptionist.handle_message
 AI reply -> ElevenLabs MP3 if available -> Twilio <Play>
 Fallback -> Twilio <Say>
 
@@ -25,7 +25,16 @@ from fastapi import APIRouter, Form, HTTPException, Request, Response
 from fastapi.responses import FileResponse, PlainTextResponse
 from twilio.twiml.voice_response import Gather, VoiceResponse
 
-from app.receptionist import handle_message, get_lead
+from app.llm_receptionist import (
+    handle_message,
+    get_lead,
+    last_ai_reply,
+    missing_fields,
+    score_lead,
+    build_final_call_json,
+    add_transcript_message,
+)
+from app.database import save_lead_to_db, save_final_call_json
 from app.tts import elevenlabs_configured, generate_elevenlabs_audio_bytes
 
 router = APIRouter(tags=["twilio"])
@@ -58,9 +67,6 @@ def _truthy(value: Optional[str], default: bool = False) -> bool:
     if value is None or str(value).strip() == "":
         return default
     return str(value).strip().lower() in {"1", "true", "yes", "on"}
-
-
-
 
 
 
@@ -119,39 +125,125 @@ def _reply_asks_for_phone(text: str) -> bool:
     ])
 
 
+def _phone_goodbye_signal(text: str) -> bool:
+    t = (text or "").strip().lower()
+    if not t:
+        return False
+    exact = {
+        "no", "nope", "nah", "that's all", "thats all", "that is all",
+        "nothing else", "no that's all", "no thats all", "all good",
+        "i'm good", "im good", "we're good", "were good", "thank you", "thanks",
+        "bye", "goodbye", "that'll be all", "that will be all",
+    }
+    if t in exact:
+        return True
+    return any(p in t for p in [
+        "nothing else", "that's all", "thats all", "all set", "i'm all set",
+        "im all set", "we are good", "we're good", "you can hang up", "end the call",
+        "bye", "goodbye",
+    ])
+
+
+def _is_final_confirmation_context(previous_ai: str | None) -> bool:
+    t = (previous_ai or "").lower()
+    return any(p in t for p in [
+        "anything else", "anything you'd like", "anything you would like",
+        "else you'd like", "else you would like", "note for the painter",
+        "add for the painter", "anything else you want me to note",
+    ])
+
+
+def _phone_lead_ready_for_wrapup(lead) -> bool:
+    """Phone-specific completeness check.
+
+    Twilio caller ID usually provides phone, so the bot should not keep asking
+    for estimator details forever. Once we have the basic callback lead, do a
+    final satisfaction check and then end politely when the caller is done.
+    """
+    service = (getattr(lead, "service", None) or "").lower().strip()
+    specific_service = bool(service and service not in {"painting", "paint", "painting project", "paint help"})
+    return bool(
+        specific_service
+        and getattr(lead, "city", None)
+        and getattr(lead, "name", None)
+        and getattr(lead, "phone", None)
+        and getattr(lead, "timeline", None)
+        and getattr(lead, "photos_available", None) is not None
+    )
+
+
+def _final_check_prompt(lead) -> str:
+    city = getattr(lead, "city", None)
+    service = getattr(lead, "service", None)
+    project = ""
+    if service and city:
+        project = f" for the {service} in {city}"
+    elif service:
+        project = f" for the {service}"
+    return _safe_twilio_text(
+        f"Great, I have the main details{project}. Is there anything else you'd like me to note for the painter?",
+        max_chars=_int_env("TWILIO_MAX_REPLY_CHARS", 260),
+    )
+
+
+def _save_phone_lead_if_needed(session_id: str, lead) -> None:
+    try:
+        lead = score_lead(lead)
+        missing = missing_fields(lead)
+        ready = len(missing) == 0 or _phone_lead_ready_for_wrapup(lead)
+        if not getattr(lead, "saved", False):
+            final_call_json = build_final_call_json(session_id, lead, missing, ready, None)
+            save_lead_to_db(session_id, lead, final_call_json)
+            save_final_call_json(session_id, final_call_json)
+            lead.saved = True
+    except Exception as exc:
+        print("TWILIO final lead save failed:", repr(exc))
+
+
 def _phone_call_next_prompt(lead) -> str:
     """Choose a phone-call friendly next prompt when caller ID already gives phone."""
-    if not getattr(lead, "name", None):
-        return "May I get your name?"
-    if not getattr(lead, "city", None):
-        return "What city is the project in?"
     service = (getattr(lead, "service", None) or "").lower()
     if not service or service in {"painting", "paint", "painting project", "paint help"}:
         return "Is this for interior, exterior, cabinets, or touch-up painting?"
+    if not getattr(lead, "city", None):
+        return "What city is the project in?"
     if not getattr(lead, "timeline", None):
         return "When are you hoping to get this completed?"
+    if not getattr(lead, "name", None):
+        return "May I get your name?"
     if getattr(lead, "photos_available", None) is None:
         return "Do you have any photos you can share?"
-    return "Is there anything else you want me to note for the painter?"
+    return "Is there anything else you'd like me to note for the painter?"
 
 
 def _sanitize_phone_call_reply(text: str, lead, caller_phone: str | None) -> str:
     """Do final phone-specific cleanup after the LLM/rule reply.
 
     If Twilio supplied caller ID, never ask for the caller's phone number.
-    Replace that question with the next useful missing field.
+    Once the phone lead has the basics, ask one final confirmation question
+    instead of continuing to collect optional estimator details forever.
     """
     text = _safe_twilio_text(text, max_chars=_int_env("TWILIO_MAX_REPLY_CHARS", 260))
     if caller_phone and _reply_asks_for_phone(text):
-        # Keep a short acknowledgement if present, then swap only the question.
         prefix = "Got it."
         if "—" in text:
             prefix = text.split("?", 1)[0].strip()
-            # Avoid keeping the phone-question clause itself.
             if _reply_asks_for_phone(prefix):
                 prefix = "Got it."
-        return _safe_twilio_text(f"{prefix} {_phone_call_next_prompt(lead)}", max_chars=_int_env("TWILIO_MAX_REPLY_CHARS", 260))
-    return text
+        text = f"{prefix} {_phone_call_next_prompt(lead)}"
+
+    if lead and _phone_lead_ready_for_wrapup(lead):
+        lower = text.lower()
+        if not _is_final_confirmation_context(text):
+            # Preserve a short useful acknowledgement if it is not just another question.
+            if "?" in text:
+                prefix = text.split("?", 1)[0].strip()
+                if not prefix or _reply_asks_for_phone(prefix):
+                    prefix = "Great, I have the main details."
+                return _safe_twilio_text(f"{prefix}. {_final_check_prompt(lead)}", max_chars=_int_env("TWILIO_MAX_REPLY_CHARS", 260))
+            return _safe_twilio_text(f"{text.rstrip(' .')}. {_final_check_prompt(lead)}", max_chars=_int_env("TWILIO_MAX_REPLY_CHARS", 260))
+
+    return _safe_twilio_text(text, max_chars=_int_env("TWILIO_MAX_REPLY_CHARS", 260))
 
 
 def _int_env(name: str, default: int) -> int:
@@ -344,7 +436,7 @@ def _compute_twilio_job(job_id: str, session_id: str, user_message: str, public_
 
     try:
         llm_started = time.perf_counter()
-        result = handle_message(session_id=session_id, message=user_message, live_mode=True)
+        result = handle_message(session_id=session_id, message=user_message)
         llm_latency_ms = int((time.perf_counter() - llm_started) * 1000)
         bot_reply = result.get("reply") or "Sorry, I had trouble with that. Could you say it one more time?"
         bot_reply = _sanitize_phone_call_reply(bot_reply, result.get("lead"), caller_phone)
@@ -460,6 +552,17 @@ async def twilio_handle(
     if not user_message:
         return _twiml(_add_gather(request, response, "Sorry, I did not catch that. Could you say that again?", session_id))
 
+    previous_ai = last_ai_reply(session_id)
+    current_lead = get_lead(session_id)
+    if _phone_goodbye_signal(user_message) and (_is_final_confirmation_context(previous_ai) or _phone_lead_ready_for_wrapup(current_lead)):
+        add_transcript_message(session_id, "customer", user_message)
+        goodbye = _env("TWILIO_GOODBYE", "Perfect — I have the details. The painter will follow up with you. Thanks for calling, goodbye.")
+        add_transcript_message(session_id, "ai", goodbye)
+        _save_phone_lead_if_needed(session_id, current_lead)
+        _say_or_play(request, response, goodbye)
+        response.hangup()
+        return _twiml(response)
+
     # Fast-ack mode improves perceived latency: Twilio hears a quick filler immediately
     # while LLM + ElevenLabs run in a background thread.
     if _truthy(os.getenv("TWILIO_FAST_ACK"), False):
@@ -472,9 +575,8 @@ async def twilio_handle(
     # Simple mode: no filler. Wait for the real reply once, then speak it.
     # This feels less awkward than saying a filler phrase, and is usually fast enough
     # if OPENAI_FAST_MODEL and ELEVENLABS_MODEL are set to low-latency models.
-    total_started = time.perf_counter()
     llm_started = time.perf_counter()
-    result = handle_message(session_id=session_id, message=user_message, live_mode=True)
+    result = handle_message(session_id=session_id, message=user_message)
     bot_reply = result.get("reply") or "Sorry, I had trouble with that. Could you say it one more time?"
     lead = result.get("lead")
     bot_reply = _sanitize_phone_call_reply(bot_reply, lead, caller_phone)

@@ -12,7 +12,7 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, Field
 
-
+# Creates a group of FastAPI routes that start with /tts
 router = APIRouter(prefix="/tts", tags=["tts"])
 
 
@@ -20,6 +20,7 @@ class TTSRequest(BaseModel):
     text: str = Field(..., min_length=1)
     voice_id: Optional[str] = None
 
+# Functions read .env values safely
 
 def _truthy(value: Optional[str], default: bool = False) -> bool:
     if value is None or str(value).strip() == "":
@@ -51,10 +52,11 @@ def _env(name: str, default: str = "") -> str:
     return (os.getenv(name, default) or default).strip().strip('"').strip("'")
 
 
+# Check if ElevenLabs is ready
 def elevenlabs_configured() -> bool:
     return bool(_env("ELEVENLABS_API_KEY") and _env("ELEVENLABS_VOICE_ID"))
 
-
+# Audio caching (if same text is spoken again)
 def _cache_dir() -> Path:
     # Use project-local cache by default. If that fails, fall back to /tmp.
     raw = _env("ELEVENLABS_CACHE_DIR", ".cache/elevenlabs_tts")
@@ -67,7 +69,7 @@ def _cache_dir() -> Path:
         path.mkdir(parents=True, exist_ok=True)
         return path
 
-
+# Creates a unique filenmae for each audio request
 def _cache_key(text: str, voice_id: str, model_id: str, output_format: str) -> str:
     raw = json.dumps(
         {
@@ -81,6 +83,7 @@ def _cache_key(text: str, voice_id: str, model_id: str, output_format: str) -> s
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
 
+# Generic ElevenLabs request helper
 def _elevenlabs_request(
     path: str,
     method: str = "GET",
@@ -123,6 +126,7 @@ def _elevenlabs_request(
         )
 
 
+# Parse ElevenLabs voice-list responses
 def _parse_json_response(data: bytes, content_type: str, source: str) -> dict:
     """Parse JSON and include a body preview if ElevenLabs returns text/HTML."""
     raw_text = data.decode("utf-8", errors="replace")

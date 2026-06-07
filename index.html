@@ -1,242 +1,354 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>AI Receptionist Demo</title>
 
   <style>
+    :root {
+      --bg: #f4f7fb;
+      --card: #ffffff;
+      --text: #172033;
+      --muted: #667085;
+      --border: #d9e2ef;
+      --primary: #2563eb;
+      --primary-dark: #1d4ed8;
+      --success: #16a34a;
+      --danger: #dc2626;
+      --warning: #ca8a04;
+      --soft-blue: #eaf2ff;
+      --soft-green: #ecfdf5;
+      --shadow: 0 18px 45px rgba(15, 23, 42, 0.08);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
     body {
-      font-family: Arial, sans-serif;
-      max-width: 1200px;
-      margin: 40px auto;
-      padding: 20px;
-      background: #f7f7f7;
+      margin: 0;
+      min-height: 100vh;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top left, rgba(37, 99, 235, 0.12), transparent 34%),
+        linear-gradient(180deg, #f8fbff 0%, var(--bg) 100%);
+    }
+
+    .page {
+      width: min(1180px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 32px 0 56px;
+    }
+
+    .hero {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 24px;
+      margin-bottom: 24px;
     }
 
     h1 {
-      margin-bottom: 5px;
+      margin: 0 0 8px;
+      font-size: clamp(30px, 4vw, 46px);
+      letter-spacing: -0.04em;
     }
 
     .subtitle {
-      color: #555;
-      margin-bottom: 20px;
+      margin: 0;
+      color: var(--muted);
+      font-size: 16px;
+      line-height: 1.5;
+      max-width: 680px;
+    }
+
+    .session-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 14px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.72);
+      color: var(--muted);
+      font-size: 13px;
+      white-space: nowrap;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1.15fr) minmax(340px, 0.85fr);
+      gap: 18px;
+      align-items: start;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid rgba(217, 226, 239, 0.9);
+      border-radius: 22px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .card-header {
+      padding: 18px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .card-title {
+      margin: 0;
+      font-size: 17px;
+      font-weight: 750;
+      letter-spacing: -0.01em;
+    }
+
+    .card-body {
+      padding: 20px;
     }
 
     textarea {
       width: 100%;
-      height: 120px;
-      font-size: 16px;
-      padding: 10px;
-      box-sizing: border-box;
-      border-radius: 8px;
-      border: 1px solid #ccc;
+      min-height: 120px;
+      resize: vertical;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 14px 15px;
+      color: var(--text);
+      font: inherit;
+      font-size: 15px;
+      line-height: 1.5;
+      outline: none;
+      background: #fbfdff;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    textarea:focus {
+      border-color: rgba(37, 99, 235, 0.65);
+      box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
+    }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+      margin-top: 14px;
     }
 
     button {
-      margin-top: 10px;
-      margin-right: 8px;
-      padding: 10px 16px;
-      font-size: 16px;
-      cursor: pointer;
-      border-radius: 8px;
-      border: 1px solid #999;
+      border: 1px solid var(--border);
+      border-radius: 999px;
       background: white;
+      color: var(--text);
+      padding: 10px 15px;
+      font: inherit;
+      font-weight: 650;
+      cursor: pointer;
+      transition: transform 0.12s ease, background 0.12s ease, border-color 0.12s ease;
     }
 
     button:hover {
-      background: #eee;
+      transform: translateY(-1px);
+      background: #f8fafc;
+      border-color: #b8c5d8;
+    }
+
+    button:disabled {
+      cursor: not-allowed;
+      opacity: 0.6;
+      transform: none;
     }
 
     .primary {
-      background: #2563eb;
       color: white;
-      border: 1px solid #2563eb;
+      background: var(--primary);
+      border-color: var(--primary);
     }
 
     .primary:hover {
-      background: #1d4ed8;
+      background: var(--primary-dark);
+      border-color: var(--primary-dark);
     }
 
     .voice {
-      background: #16a34a;
       color: white;
-      border: 1px solid #16a34a;
-    }
-
-    .voice:hover {
-      background: #15803d;
+      background: var(--success);
+      border-color: var(--success);
     }
 
     .danger {
-      background: #dc2626;
       color: white;
-      border: 1px solid #dc2626;
+      background: var(--danger);
+      border-color: var(--danger);
     }
 
-    .danger:hover {
-      background: #b91c1c;
+    .ghost {
+      background: transparent;
     }
 
     .small-button {
-      padding: 5px 8px;
+      padding: 6px 9px;
       font-size: 12px;
       margin: 2px;
-      border-radius: 6px;
     }
 
-    .box {
-      margin-top: 20px;
-      padding: 15px;
-      border: 1px solid #ccc;
-      border-radius: 8px;
-      background: white;
-      white-space: pre-wrap;
-    }
-
-    .session {
-      margin-top: 10px;
+    .toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--muted);
       font-size: 14px;
-      color: #555;
+      user-select: none;
     }
 
-    pre {
-      white-space: pre-wrap;
-      word-wrap: break-word;
+    .status-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 10px;
+      margin-top: 16px;
     }
+
+    .status-card {
+      padding: 12px;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      background: #fbfdff;
+      min-height: 70px;
+    }
+
+    .status-label {
+      color: var(--muted);
+      font-size: 12px;
+      margin-bottom: 5px;
+    }
+
+    .status-value {
+      font-size: 14px;
+      font-weight: 700;
+      line-height: 1.35;
+    }
+
+    .status-detail {
+      display: block;
+      margin-top: 3px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .good { color: var(--success); }
+    .warn { color: var(--warning); }
+    .bad { color: var(--danger); }
+    .muted { color: var(--muted); }
 
     .chat-history {
-      margin-top: 20px;
-      padding: 15px;
-      border: 1px solid #ccc;
-      border-radius: 8px;
-      background: white;
-      max-height: 350px;
+      margin-top: 18px;
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      background: #f8fafc;
+      min-height: 260px;
+      max-height: 430px;
       overflow-y: auto;
+      padding: 14px;
     }
 
-    .chat-message {
-      margin-bottom: 14px;
-      padding: 10px;
-      border-radius: 8px;
+    .empty-state {
+      height: 220px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      color: var(--muted);
+      line-height: 1.5;
+      padding: 16px;
+    }
+
+    .message {
+      max-width: 86%;
+      padding: 12px 14px;
+      border-radius: 16px;
+      margin-bottom: 12px;
+      line-height: 1.45;
+      border: 1px solid transparent;
+    }
+
+    .message .who {
+      display: block;
+      margin-bottom: 4px;
+      font-size: 12px;
+      font-weight: 800;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
     }
 
     .customer {
-      background: #e0f2fe;
+      margin-left: auto;
+      background: var(--soft-blue);
+      border-color: #c9dcff;
     }
 
     .bot {
-      background: #ecfdf5;
+      margin-right: auto;
+      background: var(--soft-green);
+      border-color: #bbf7d0;
     }
 
-    .label {
-      font-weight: bold;
-      margin-bottom: 4px;
+    .reply-box {
+      padding: 14px;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      background: #fbfdff;
+      line-height: 1.5;
+      min-height: 54px;
     }
 
-    .error {
-      color: #b91c1c;
-      font-weight: bold;
+    .lead-list {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
     }
 
-    .status {
-      margin-top: 10px;
+    .lead-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 14px;
+      padding: 11px 0;
+      border-bottom: 1px solid #eef2f7;
+    }
+
+    .lead-row:last-child {
+      border-bottom: 0;
+    }
+
+    .lead-key {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .lead-value {
+      text-align: right;
+      font-weight: 700;
       font-size: 14px;
-      color: #444;
-    }
-
-    .tts-config {
-      margin-top: 10px;
-      padding: 10px 12px;
-      border-radius: 8px;
-      background: #fff7ed;
-      border: 1px solid #fed7aa;
-      font-size: 14px;
-      color: #7c2d12;
-    }
-
-    .listening {
-      color: #16a34a;
-      font-weight: bold;
-    }
-
-    .latency-good {
-      color: #16a34a;
-      font-weight: bold;
-    }
-
-    .latency-ok {
-      color: #ca8a04;
-      font-weight: bold;
-    }
-
-    .latency-slow {
-      color: #dc2626;
-      font-weight: bold;
-    }
-
-
-    .reasoner-status {
-      margin-top: 8px;
-      padding: 10px 12px;
-      border-radius: 8px;
-      background: #f8fafc;
-      border: 1px solid #e2e8f0;
-      font-size: 14px;
-    }
-
-    .reasoner-rule {
-      color: #166534;
-      font-weight: bold;
-    }
-
-    .reasoner-heuristic {
-      color: #92400e;
-      font-weight: bold;
-    }
-
-    .reasoner-llm {
-      color: #6d28d9;
-      font-weight: bold;
-    }
-
-    .reasoner-error {
-      color: #b91c1c;
-      font-weight: bold;
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 12px;
-      font-size: 14px;
-    }
-
-    th, td {
-      border: 1px solid #ddd;
-      padding: 8px;
-      text-align: left;
-      vertical-align: top;
-    }
-
-    th {
-      background: #f1f5f9;
-      font-weight: bold;
-    }
-
-    tr:nth-child(even) {
-      background: #fafafa;
-    }
-
-    .lead-table-wrapper {
-      overflow-x: auto;
-      margin-top: 10px;
+      max-width: 62%;
+      word-break: break-word;
     }
 
     .pill {
-      display: inline-block;
-      padding: 3px 8px;
+      display: inline-flex;
+      align-items: center;
+      padding: 4px 9px;
       border-radius: 999px;
       background: #e0f2fe;
+      color: #075985;
       font-size: 12px;
+      font-weight: 750;
       white-space: nowrap;
     }
 
@@ -245,297 +357,221 @@
       padding: 4px 9px;
       border-radius: 999px;
       font-size: 12px;
-      font-weight: bold;
+      font-weight: 800;
       white-space: nowrap;
     }
 
-    .status-new {
-      background: #dbeafe;
-      color: #1d4ed8;
+    .status-new { background: #dbeafe; color: #1d4ed8; }
+    .status-contacted { background: #fef3c7; color: #92400e; }
+    .status-scheduled { background: #dcfce7; color: #166534; }
+    .status-closed { background: #e5e7eb; color: #374151; }
+    .status-lost { background: #fee2e2; color: #991b1b; }
+
+    .dashboard {
+      margin-top: 18px;
     }
 
-    .status-contacted {
-      background: #fef3c7;
-      color: #92400e;
+    .lead-cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 14px;
+      margin-top: 14px;
     }
 
-    .status-scheduled {
-      background: #dcfce7;
-      color: #166534;
+    .saved-card {
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      background: #fbfdff;
+      padding: 14px;
     }
 
-    .status-closed {
-      background: #e5e7eb;
-      color: #374151;
+    .saved-card-header {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 10px;
     }
 
-    .status-lost {
-      background: #fee2e2;
-      color: #991b1b;
+    .saved-title {
+      font-weight: 850;
     }
 
-    .empty {
-      color: #666;
-      font-style: italic;
-      margin-top: 10px;
+    .saved-meta {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.5;
     }
 
     .actions {
-      min-width: 210px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      margin-top: 10px;
+    }
+
+    .error {
+      color: var(--danger);
+      font-weight: 800;
+    }
+
+    @media (max-width: 900px) {
+      .hero,
+      .layout {
+        grid-template-columns: 1fr;
+        display: block;
+      }
+
+      .session-pill {
+        margin-top: 16px;
+        white-space: normal;
+      }
+
+      .layout > * + * {
+        margin-top: 18px;
+      }
+
+      .status-grid {
+        grid-template-columns: 1fr;
+      }
     }
   </style>
 </head>
 
 <body>
-  <h1>AI Receptionist Demo</h1>
-  <div class="subtitle">Painting contractor lead-capture prototype with browser voice + latency tracking</div>
+  <main class="page">
+    <section class="hero">
+      <div>
+        <h1>AI Receptionist</h1>
+        <p class="subtitle">A clean painting-contractor demo for lead capture, conversation memory, and saved lead tracking.</p>
+      </div>
+      <div class="session-pill">Session <strong id="sessionId"></strong></div>
+    </section>
 
-  <div class="session">
-    Current Customer Session:
-    <strong id="sessionId"></strong>
-  </div>
+    <section class="layout">
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title">Conversation</h2>
+          <button class="ghost" onclick="newCustomer()">New customer</button>
+        </div>
+        <div class="card-body">
+          <textarea id="message" placeholder="Type a customer message, e.g. I need my hallway painted in San Mateo next week."></textarea>
 
-  <p>Type or speak a customer message:</p>
+          <div class="toolbar">
+            <button class="primary" id="sendButton" onclick="sendMessage()">Send</button>
+            <button class="voice" onclick="startVoiceInput()">Start voice</button>
+            <button class="danger" onclick="stopVoiceInput()">Stop voice</button>
+            <button onclick="clearChat()">Clear chat</button>
+            <label class="toggle">
+              <input type="checkbox" id="speakReplies" checked /> Speak replies
+            </label>
+            <label class="toggle">
+              <input type="checkbox" id="elevenLabsVoice" checked /> ElevenLabs voice
+            </label>
+          </div>
 
-  <textarea id="message">I need a 100 sq ft room painted in San Jose. Walls only. Next week. My name is Andy and my phone is 408-555-1234. How much does it cost?</textarea>
+          <div class="status-grid">
+            <div class="status-card">
+              <div class="status-label">Voice</div>
+              <div class="status-value" id="voiceStatus">Idle</div>
+            </div>
+            <div class="status-card">
+              <div class="status-label">Latency</div>
+              <div class="status-value" id="latencyStatus">Not measured</div>
+            </div>
+            <div class="status-card">
+              <div class="status-label">OpenAI</div>
+              <div class="status-value" id="openAiStatus">Checking...</div>
+            </div>
+            <div class="status-card">
+              <div class="status-label">ElevenLabs</div>
+              <div class="status-value" id="elevenLabsStatus">Checking...</div>
+            </div>
+            <div class="status-card">
+              <div class="status-label">AI route</div>
+              <div class="status-value" id="aiStatus">Waiting</div>
+            </div>
+          </div>
 
-  <br />
+          <div class="chat-history" id="chatHistory">
+            <div class="empty-state" id="emptyChat">Start a conversation to see messages here.</div>
+            <div id="messages"></div>
+          </div>
+        </div>
+      </div>
 
-  <button class="primary" onclick="sendMessage()">Send</button>
-  <button class="voice" onclick="startVoiceInput()">🎙 Start Voice Input</button>
-  <button class="danger" onclick="stopVoiceInput()">Stop Voice</button>
-  <button onclick="newCustomer()">New Customer</button>
-  <button onclick="loadLeads()">Load Saved Leads</button>
-  <button onclick="clearChat()">Clear Chat</button>
-  <button onclick="runAiCleanup()">Run AI Cleanup</button>
-  <button onclick="refreshSessionLead()">Refresh Live AI Result</button>
-  <label style="margin-left: 12px; font-size: 14px;">
-    <input type="checkbox" id="liveMode" checked /> Live call mode (fast, defer real AI)
-  </label>
-  <label style="margin-left: 12px; font-size: 14px;">
-    <input type="checkbox" id="elevenLabsVoice" checked /> Use ElevenLabs voice
-  </label>
-  <button onclick="testElevenLabsVoice()">Test ElevenLabs Voice</button>
-  <button onclick="diagnoseElevenLabs()">Diagnose ElevenLabs</button>
+      <aside class="card">
+        <div class="card-header">
+          <h2 class="card-title">Current lead</h2>
+          <button onclick="refreshSessionLead()">Refresh</button>
+        </div>
+        <div class="card-body">
+          <div class="reply-box" id="reply">Latest receptionist reply will appear here.</div>
+          <div style="height: 16px"></div>
+          <div class="lead-list" id="leadSummary"></div>
+        </div>
+      </aside>
+    </section>
 
-  <div class="status" id="voiceStatus">Voice status: idle</div>
-  <div class="tts-config" id="ttsStatus">ElevenLabs: checking configuration...</div>
-  <div class="status" id="latencyStatus">Latency: not measured yet</div>
-  <div class="reasoner-status" id="reasonerStatus">Reasoner: not run yet</div>
-
-  <div class="chat-history" id="chatHistory">
-    <strong>Conversation History:</strong>
-    <div id="messages"></div>
-  </div>
-
-  <div class="box">
-    <strong>Latest Receptionist Reply:</strong>
-    <div id="reply"></div>
-  </div>
-
-  <div class="box">
-    <strong>Extracted Lead:</strong>
-    <pre id="lead"></pre>
-  </div>
-
-  <div class="box">
-    <strong>Saved Leads Dashboard:</strong>
-    <div id="savedLeads"></div>
-  </div>
+    <section class="card dashboard">
+      <div class="card-header">
+        <h2 class="card-title">Saved leads</h2>
+        <button onclick="loadLeads()">Refresh leads</button>
+      </div>
+      <div class="card-body">
+        <div id="savedLeads"><div class="empty-state">Loading saved leads...</div></div>
+      </div>
+    </section>
+  </main>
 
   <script>
     let sessionId = "customer-" + Date.now();
     let recognition = null;
     let isListening = false;
-    let backgroundPollTimer = null;
     let currentAudio = null;
+    let openAiConfigured = false;
+    let openAiModel = "Pending first LLM reply";
     let elevenLabsConfigured = false;
+    let elevenLabsModel = "Unknown";
     const API_BASE_URL = window.location.origin;
 
     document.getElementById("sessionId").innerText = sessionId;
+    renderLeadSummary(null);
 
     function newCustomer() {
       sessionId = "customer-" + Date.now();
-
       document.getElementById("sessionId").innerText = sessionId;
       document.getElementById("message").value = "";
-      document.getElementById("reply").innerText = "";
-      document.getElementById("lead").innerText = "";
+      document.getElementById("reply").innerText = "Latest receptionist reply will appear here.";
       document.getElementById("messages").innerHTML = "";
-      document.getElementById("voiceStatus").innerText = "Voice status: idle";
-      document.getElementById("latencyStatus").innerText = "Latency: not measured yet";
-      document.getElementById("reasonerStatus").innerText = "Reasoner: not run yet";
-
+      document.getElementById("emptyChat").style.display = "flex";
+      document.getElementById("voiceStatus").innerText = "Idle";
+      document.getElementById("latencyStatus").innerText = "Not measured";
+      document.getElementById("aiStatus").innerText = "Waiting";
+      renderOpenAiStatus();
+      renderElevenLabsStatus();
+      renderLeadSummary(null);
       stopSpeaking();
       stopVoiceInput();
-
       document.getElementById("message").focus();
     }
 
     function clearChat() {
       document.getElementById("messages").innerHTML = "";
-      document.getElementById("reply").innerText = "";
-      document.getElementById("lead").innerText = "";
-      document.getElementById("latencyStatus").innerText = "Latency: not measured yet";
-      document.getElementById("reasonerStatus").innerText = "Reasoner: not run yet";
+      document.getElementById("emptyChat").style.display = "flex";
+      document.getElementById("reply").innerText = "Latest receptionist reply will appear here.";
+      document.getElementById("latencyStatus").innerText = "Not measured";
+      document.getElementById("aiStatus").innerText = "Waiting";
+      renderOpenAiStatus();
+      renderElevenLabsStatus();
+      renderLeadSummary(null);
     }
 
     function isValidMessage(message) {
-      const cleaned = message.trim();
-
-      if (!cleaned) {
-        return false;
-      }
-
-      // Real callers often answer with short valid messages like "Andy", "yes",
-      // "no", or "2". Let the backend/AI extractor decide whether a short
-      // message is meaningful instead of blocking it in the browser.
-      if (cleaned.length < 2) {
-        return false;
-      }
-
-      return true;
-    }
-
-    function addMessageToChat(sender, text, type) {
-      const messagesDiv = document.getElementById("messages");
-
-      const messageDiv = document.createElement("div");
-      messageDiv.className = "chat-message " + type;
-
-      const labelDiv = document.createElement("div");
-      labelDiv.className = "label";
-      labelDiv.innerText = sender + ":";
-
-      const textDiv = document.createElement("div");
-      textDiv.innerText = text;
-
-      messageDiv.appendChild(labelDiv);
-      messageDiv.appendChild(textDiv);
-      messagesDiv.appendChild(messageDiv);
-
-      const chatHistory = document.getElementById("chatHistory");
-      chatHistory.scrollTop = chatHistory.scrollHeight;
-    }
-
-    function updateLatencyStatus(latencyMs) {
-      const latencyStatus = document.getElementById("latencyStatus");
-
-      let label = "";
-      let cssClass = "";
-
-      if (latencyMs < 500) {
-        label = "very fast";
-        cssClass = "latency-good";
-      } else if (latencyMs < 1500) {
-        label = "good";
-        cssClass = "latency-good";
-      } else if (latencyMs < 2500) {
-        label = "acceptable";
-        cssClass = "latency-ok";
-      } else {
-        label = "slow";
-        cssClass = "latency-slow";
-      }
-
-      latencyStatus.innerHTML =
-        "Backend round-trip latency: " +
-        "<span class='" + cssClass + "'>" +
-        latencyMs.toFixed(0) +
-        " ms (" +
-        label +
-        ")</span>";
-    }
-
-
-    function updateReasonerStatus(metrics) {
-      const reasonerStatus = document.getElementById("reasonerStatus");
-
-      if (!metrics) {
-        reasonerStatus.innerText = "Reasoner: no debug metadata returned";
-        return;
-      }
-
-      const source = metrics.reasoner_source || "rule";
-      const used = metrics.reasoner_used === true;
-      const trigger = metrics.reasoner_trigger || "rules_sufficient";
-      const confidence = metrics.reasoner_confidence;
-      const latency = metrics.reasoner_latency_ms || 0;
-      const reason = metrics.reasoner_reason || "";
-      const llmConfigured = metrics.llm_configured === true;
-      const llmError = metrics.llm_error || "";
-      const llmDeferred = metrics.llm_deferred === true;
-      const liveMode = metrics.live_mode === true;
-      const backgroundStarted = metrics.background_llm_started === true;
-      const backgroundStatus = metrics.background_reasoner_status || null;
-      const talkerSource = metrics.talker_source || "none";
-      const talkerUsed = metrics.talker_used === true;
-      const talkerLatency = metrics.talker_latency_ms || 0;
-      const talkerReason = metrics.talker_reason || "";
-      const cacheHit = metrics.cache_hit === true;
-      const cacheKind = metrics.cache_kind || "";
-
-      let cssClass = "reasoner-rule";
-      let label = "Rule layer";
-
-      if (source === "llm_first") {
-        cssClass = "reasoner-llm";
-        label = "LLM-first live receptionist";
-      } else if (source === "llm") {
-        cssClass = "reasoner-llm";
-        label = "Real AI / LLM patch";
-      } else if (source === "heuristic") {
-        cssClass = "reasoner-heuristic";
-        if (llmDeferred) {
-          label = "Fast heuristic patch — real AI deferred";
-        } else {
-          label = llmConfigured ? "Heuristic fallback patch after LLM failure" : "Heuristic fallback patch — real AI not configured";
-        }
-      } else if (source === "faq_cache") {
-        cssClass = "reasoner-rule";
-        label = "FAQ cache";
-      } else if (source === "echo_guard") {
-        cssClass = "reasoner-rule";
-        label = "Echo guard";
-      } else if (source === "error") {
-        cssClass = "reasoner-error";
-        label = "Reasoner error";
-      }
-
-      const confidenceText = confidence === null || confidence === undefined
-        ? ""
-        : ` | confidence: ${Number(confidence).toFixed(2)}`;
-
-      const latencyText = used ? ` | reasoner latency: ${latency} ms` : "";
-      const configText = used ? ` | real AI configured: ${llmConfigured ? "yes" : "no"}` : "";
-      const modeText = used ? ` | mode: ${liveMode ? "live/fast" : "smart/blocking"}` : "";
-      const deferredText = llmDeferred ? (backgroundStarted ? " | LLM running in background" : " | LLM deferred for cleanup") : "";
-      const backgroundText = backgroundStatus ? ` | background: ${escapeHtml(backgroundStatus.status || "unknown")}` : "";
-      const cacheText = cacheHit ? ` | cache hit${cacheKind ? ": " + escapeHtml(cacheKind) : ""}` : "";
-      const reasonText = reason ? `<br><span>Why: ${escapeHtml(reason)}</span>` : "";
-      const talkerText = talkerSource && talkerSource !== "none"
-        ? `<br><span>Talker: ${escapeHtml(talkerSource)}${talkerUsed ? " applied" : ""} | latency: ${talkerLatency} ms${talkerReason ? " | " + escapeHtml(talkerReason) : ""}</span>`
-        : "";
-      const errorText = llmError ? `<br><span class="reasoner-error">LLM error: ${escapeHtml(llmError)}</span>` : "";
-
-      reasonerStatus.innerHTML =
-        `Reasoner: <span class="${cssClass}">${label}</span>` +
-        ` | source: ${escapeHtml(source)}` +
-        ` | trigger: ${escapeHtml(trigger)}` +
-        confidenceText +
-        latencyText +
-        configText +
-        modeText +
-        deferredText +
-        backgroundText +
-        cacheText +
-        reasonText +
-        talkerText +
-        errorText;
+      return message && message.trim().length >= 2;
     }
 
     function escapeHtml(value) {
-      return String(value)
+      return String(value ?? "")
         .replace(/&/g, "&amp;")
         .replace(/</g, "&lt;")
         .replace(/>/g, "&gt;")
@@ -543,57 +579,154 @@
         .replace(/'/g, "&#039;");
     }
 
+    function addMessageToChat(sender, text, type) {
+      document.getElementById("emptyChat").style.display = "none";
+      const messagesDiv = document.getElementById("messages");
+      const messageDiv = document.createElement("div");
+      messageDiv.className = "message " + type;
+      messageDiv.innerHTML = `<span class="who">${escapeHtml(sender)}</span>${escapeHtml(text)}`;
+      messagesDiv.appendChild(messageDiv);
+      const chatHistory = document.getElementById("chatHistory");
+      chatHistory.scrollTop = chatHistory.scrollHeight;
+    }
+
+    function updateLatencyStatus(latencyMs) {
+      let cssClass = "good";
+      let label = "fast";
+      if (latencyMs >= 2500) {
+        cssClass = "bad";
+        label = "slow";
+      } else if (latencyMs >= 1500) {
+        cssClass = "warn";
+        label = "okay";
+      }
+      document.getElementById("latencyStatus").innerHTML =
+        `<span class="${cssClass}">${Math.round(latencyMs)} ms</span> <span class="muted">${label}</span>`;
+    }
+
+    function renderOpenAiStatus() {
+      const el = document.getElementById("openAiStatus");
+      if (!el) return;
+      const statusClass = openAiConfigured ? "good" : "bad";
+      const statusText = openAiConfigured ? "Configured" : "Not configured";
+      el.innerHTML =
+        `<span class="${statusClass}">${statusText}</span>` +
+        `<span class="status-detail">Model: ${escapeHtml(openAiModel || "Unknown")}</span>`;
+    }
+
+    function renderElevenLabsStatus() {
+      const el = document.getElementById("elevenLabsStatus");
+      if (!el) return;
+      const toggle = document.getElementById("elevenLabsVoice");
+      if (toggle) {
+        toggle.disabled = !elevenLabsConfigured;
+        if (!elevenLabsConfigured) toggle.checked = false;
+      }
+      const enabled = toggle && toggle.checked && elevenLabsConfigured;
+      const statusClass = elevenLabsConfigured ? (enabled ? "good" : "warn") : "bad";
+      const statusText = elevenLabsConfigured ? (enabled ? "Enabled" : "Disabled") : "Not configured";
+      el.innerHTML =
+        `<span class="${statusClass}">${statusText}</span>` +
+        `<span class="status-detail">Model: ${escapeHtml(elevenLabsModel || "Unknown")}</span>`;
+    }
+
+    function updateAiStatus(metrics) {
+      if (!metrics) {
+        document.getElementById("aiStatus").innerText = "No metrics";
+        return;
+      }
+      const source = metrics.reasoner_source || metrics.cache_kind || "unknown";
+      if (metrics.llm_model) {
+        openAiModel = metrics.llm_model;
+        openAiConfigured = true;
+        renderOpenAiStatus();
+      }
+      const model = metrics.llm_model ? ` · ${metrics.llm_model}` : "";
+      const cache = metrics.cache_hit ? " · cache hit" : "";
+      document.getElementById("aiStatus").innerHTML =
+        `${escapeHtml(source)}${escapeHtml(model)}${escapeHtml(cache)}`;
+    }
+
+    function valueOrDash(value) {
+      if (value === true) return "Yes";
+      if (value === false) return "No";
+      if (value === null || value === undefined || value === "") return "-";
+      return value;
+    }
+
+    function renderLeadSummary(lead) {
+      const container = document.getElementById("leadSummary");
+      if (!lead) {
+        container.innerHTML = `<div class="empty-state" style="height: 180px;">Lead details will appear here as the conversation progresses.</div>`;
+        return;
+      }
+
+      const rows = [
+        ["Name", lead.name],
+        ["Phone", lead.phone],
+        ["City", lead.city],
+        ["Service", lead.service],
+        ["Scope", lead.project_scope],
+        ["Timeline", lead.timeline],
+        ["Repairs", valueOrDash(lead.repairs_needed)],
+        ["Priority", lead.lead_priority],
+        ["Score", lead.lead_score]
+      ];
+
+      container.innerHTML = rows.map(([key, value]) => `
+        <div class="lead-row">
+          <div class="lead-key">${escapeHtml(key)}</div>
+          <div class="lead-value">${escapeHtml(valueOrDash(value))}</div>
+        </div>
+      `).join("");
+    }
+
     async function sendMessage() {
       const messageBox = document.getElementById("message");
-      const message = messageBox.value;
+      const message = messageBox.value.trim();
+      const sendButton = document.getElementById("sendButton");
 
       if (!isValidMessage(message)) {
         document.getElementById("reply").innerHTML =
-          "<span class='error'>Invalid message. Please enter a real customer message.</span>";
+          `<span class="error">Please enter a customer message.</span>`;
         return;
       }
 
       addMessageToChat("Customer", message, "customer");
+      sendButton.disabled = true;
+      sendButton.innerText = "Sending...";
 
       try {
         const requestStart = performance.now();
-
         const response = await fetch(`${API_BASE_URL}/chat`, {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             session_id: sessionId,
-            message: message,
-            live_mode: document.getElementById("liveMode").checked
+            message: message
           })
         });
-
-        const requestEnd = performance.now();
-        const frontendLatencyMs = requestEnd - requestStart;
-
+        const frontendLatencyMs = performance.now() - requestStart;
         updateLatencyStatus(frontendLatencyMs);
 
         if (!response.ok) {
-          let errorText = await response.text();
+          const errorText = await response.text();
           document.getElementById("reply").innerHTML =
-            `<span class='error'>Backend error (${response.status}). ${escapeHtml(errorText.slice(0, 500))}</span>`;
+            `<span class="error">Backend error (${response.status}). ${escapeHtml(errorText.slice(0, 500))}</span>`;
           return;
         }
 
         const data = await response.json();
+        const reply = data.reply || "Sorry, I had trouble responding.";
 
-        document.getElementById("reply").innerText = data.reply;
-        document.getElementById("lead").innerText = JSON.stringify(data.lead, null, 2);
-        updateReasonerStatus(data.metrics);
-        if (data.metrics && data.metrics.background_llm_started) {
-          scheduleBackgroundRefresh();
+        document.getElementById("reply").innerText = reply;
+        renderLeadSummary(data.lead);
+        updateAiStatus(data.metrics);
+        addMessageToChat("AI Receptionist", reply, "bot");
+
+        if (document.getElementById("speakReplies").checked) {
+          speakText(reply);
         }
-
-        addMessageToChat("AI Receptionist", data.reply, "bot");
-
-        speakText(data.reply);
 
         messageBox.value = "";
         messageBox.focus();
@@ -601,299 +734,159 @@
         if (data.ready_to_send_to_painter) {
           loadLeads();
         }
-
       } catch (error) {
         document.getElementById("reply").innerHTML =
-          "<span class='error'>Error: Could not connect to backend. Make sure uvicorn is running.</span>";
-
+          `<span class="error">Could not connect to backend. Make sure uvicorn is running.</span>`;
         document.getElementById("latencyStatus").innerHTML =
-          "<span class='error'>Latency: failed to measure because backend connection failed.</span>";
-
+          `<span class="bad">Failed</span>`;
         console.error(error);
+      } finally {
+        sendButton.disabled = false;
+        sendButton.innerText = "Send";
       }
-    }
-
-    function scheduleBackgroundRefresh() {
-      if (backgroundPollTimer) {
-        clearTimeout(backgroundPollTimer);
-      }
-      backgroundPollTimer = setTimeout(refreshSessionLead, 3000);
     }
 
     async function refreshSessionLead() {
       try {
         const response = await fetch(`${API_BASE_URL}/sessions/${sessionId}/lead`);
+        if (!response.ok) return;
         const data = await response.json();
-        if (data.lead) {
-          document.getElementById("lead").innerText = JSON.stringify(data.lead, null, 2);
-        }
-        if (data.background_reasoner_status) {
-          const st = data.background_reasoner_status;
-          document.getElementById("reasonerStatus").innerHTML =
-            `Background AI: ${escapeHtml(st.status || "unknown")}` +
-            (st.latency_ms ? ` | latency: ${st.latency_ms} ms` : "") +
-            (st.source ? ` | source: ${escapeHtml(st.source)}` : "") +
-            (st.reason ? `<br><span>Why: ${escapeHtml(st.reason)}</span>` : "");
-          if (st.status === "running") {
-            scheduleBackgroundRefresh();
-          }
-        }
+        renderLeadSummary(data.lead);
       } catch (error) {
         console.error(error);
       }
-    }
-
-    async function runAiCleanup() {
-      try {
-        const requestStart = performance.now();
-        const response = await fetch(`${API_BASE_URL}/sessions/${sessionId}/ai-cleanup`, {
-          method: "POST"
-        });
-        const requestEnd = performance.now();
-        const data = await response.json();
-
-        if (!data.success) {
-          document.getElementById("reasonerStatus").innerHTML =
-            `<span class='reasoner-error'>AI cleanup failed: ${escapeHtml(data.error || "unknown error")}</span>`;
-          return;
-        }
-
-        document.getElementById("lead").innerText = JSON.stringify(data.lead, null, 2);
-        document.getElementById("reasonerStatus").innerHTML =
-          `Post-call AI cleanup complete in ${Math.round(requestEnd - requestStart)} ms. ` +
-          `Patch source: ${escapeHtml(data.patch?.source || "llm")}.`;
-      } catch (error) {
-        document.getElementById("reasonerStatus").innerHTML =
-          `<span class='reasoner-error'>AI cleanup failed to connect to backend.</span>`;
-        console.error(error);
-      }
-    }
-
-    function formatBoolean(value) {
-      if (value === true) {
-        return "Yes";
-      }
-
-      if (value === false) {
-        return "No";
-      }
-
-      return "-";
     }
 
     function formatDate(value) {
-      if (!value) {
-        return "-";
-      }
-
-      try {
-        const date = new Date(value);
-        return date.toLocaleString();
-      } catch {
-        return value;
-      }
-    }
-
-    function formatNotes(notes) {
-      if (!notes || notes.length === 0) {
-        return "-";
-      }
-
-      if (Array.isArray(notes)) {
-        return notes.join("; ");
-      }
-
-      return String(notes);
+      if (!value) return "-";
+      try { return new Date(value).toLocaleString(); } catch { return value; }
     }
 
     function getStatusClass(status) {
       const normalized = (status || "New").toLowerCase();
-
-      if (normalized === "new") {
-        return "status-new";
-      }
-
-      if (normalized === "contacted") {
-        return "status-contacted";
-      }
-
-      if (normalized === "scheduled") {
-        return "status-scheduled";
-      }
-
-      if (normalized === "closed") {
-        return "status-closed";
-      }
-
-      if (normalized === "lost") {
-        return "status-lost";
-      }
-
+      if (normalized === "contacted") return "status-contacted";
+      if (normalized === "scheduled") return "status-scheduled";
+      if (normalized === "closed") return "status-closed";
+      if (normalized === "lost") return "status-lost";
       return "status-new";
     }
 
     function renderStatus(status) {
       const safeStatus = status || "New";
-      const cssClass = getStatusClass(safeStatus);
-
-      return `<span class="status-pill ${cssClass}">${safeStatus}</span>`;
+      return `<span class="status-pill ${getStatusClass(safeStatus)}">${escapeHtml(safeStatus)}</span>`;
     }
 
     async function updateLeadStatus(leadId, status) {
       try {
         const response = await fetch(`${API_BASE_URL}/leads/${leadId}/status`, {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            status: status
-          })
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status })
         });
-
         if (!response.ok) {
           alert("Failed to update lead status.");
           return;
         }
-
         await loadLeads();
-
       } catch (error) {
         alert("Could not connect to backend.");
         console.error(error);
       }
     }
 
-    function renderLeadsTable(leads) {
+    function renderLeads(leads) {
       const savedLeadsDiv = document.getElementById("savedLeads");
-
       if (!leads || leads.length === 0) {
-        savedLeadsDiv.innerHTML = "<div class='empty'>No saved leads yet.</div>";
+        savedLeadsDiv.innerHTML = `<div class="empty-state">No saved leads yet.</div>`;
         return;
       }
 
-      let html = `
-        <div class="lead-table-wrapper">
-          <table>
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Status</th>
-                <th>Priority</th>
-                <th>Score</th>
-                <th>Created</th>
-                <th>Name</th>
-                <th>Phone</th>
-                <th>City</th>
-                <th>Service</th>
-                <th>Size</th>
-                <th>Rooms</th>
-                <th>Walls Only</th>
-                <th>Ceiling</th>
-                <th>Trim</th>
-                <th>Timeline</th>
-                <th>Callback</th>
-                <th>Scope</th>
-                <th>Photos</th>
-                <th>Intent</th>
-                <th>Notes</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-      `;
-
-      for (const lead of leads) {
-        html += `
-          <tr>
-            <td>${lead.id ?? "-"}</td>
-            <td>${renderStatus(lead.status)}</td>
-            <td><span class="pill">${lead.lead_priority ?? "Normal"}</span></td>
-            <td>${lead.lead_score ?? "-"}</td>
-            <td>${formatDate(lead.created_at)}</td>
-            <td>${lead.name ?? "-"}</td>
-            <td>${lead.phone ?? "-"}</td>
-            <td>${lead.city ?? "-"}</td>
-            <td><span class="pill">${lead.service ?? "-"}</span></td>
-            <td>${lead.room_size_sqft ? lead.room_size_sqft + " sq ft" : "-"}</td>
-            <td>${lead.rooms ?? "-"}</td>
-            <td>${formatBoolean(lead.walls_only)}</td>
-            <td>${formatBoolean(lead.ceiling)}</td>
-            <td>${formatBoolean(lead.trim)}</td>
-            <td>${lead.timeline ?? "-"}</td>
-            <td>${lead.preferred_callback_time ?? "-"}</td>
-            <td>${lead.project_scope ?? "-"}</td>
-            <td>${formatBoolean(lead.photos_available)}</td>
-            <td>${lead.intent ?? "-"}</td>
-            <td>${formatNotes(lead.notes)}</td>
-            <td class="actions">
-              <button class="small-button" onclick="updateLeadStatus(${lead.id}, 'New')">New</button>
-              <button class="small-button" onclick="updateLeadStatus(${lead.id}, 'Contacted')">Contacted</button>
-              <button class="small-button" onclick="updateLeadStatus(${lead.id}, 'Scheduled')">Scheduled</button>
-              <button class="small-button" onclick="updateLeadStatus(${lead.id}, 'Closed')">Closed</button>
-              <button class="small-button" onclick="updateLeadStatus(${lead.id}, 'Lost')">Lost</button>
-            </td>
-          </tr>
-        `;
-      }
-
-      html += `
-            </tbody>
-          </table>
+      savedLeadsDiv.innerHTML = `
+        <div class="lead-cards">
+          ${leads.map(lead => `
+            <div class="saved-card">
+              <div class="saved-card-header">
+                <div>
+                  <div class="saved-title">${escapeHtml(lead.name || "Unnamed lead")}</div>
+                  <div class="saved-meta">${escapeHtml(lead.phone || "No phone")} · ${escapeHtml(lead.city || "No city")}</div>
+                </div>
+                ${renderStatus(lead.status)}
+              </div>
+              <div class="saved-meta">
+                <strong>${escapeHtml(lead.service || "Painting project")}</strong><br>
+                ${escapeHtml(lead.project_scope || "No scope yet")}<br>
+                Timeline: ${escapeHtml(lead.timeline || "-")}<br>
+                Priority: <span class="pill">${escapeHtml(lead.lead_priority || "Normal")}</span>
+                ${lead.lead_score !== undefined && lead.lead_score !== null ? ` Score: ${escapeHtml(lead.lead_score)}` : ""}<br>
+                Created: ${escapeHtml(formatDate(lead.created_at))}
+              </div>
+              <div class="actions">
+                <button class="small-button" onclick="updateLeadStatus(${lead.id}, 'New')">New</button>
+                <button class="small-button" onclick="updateLeadStatus(${lead.id}, 'Contacted')">Contacted</button>
+                <button class="small-button" onclick="updateLeadStatus(${lead.id}, 'Scheduled')">Scheduled</button>
+                <button class="small-button" onclick="updateLeadStatus(${lead.id}, 'Closed')">Closed</button>
+                <button class="small-button" onclick="updateLeadStatus(${lead.id}, 'Lost')">Lost</button>
+              </div>
+            </div>
+          `).join("")}
         </div>
       `;
-
-      savedLeadsDiv.innerHTML = html;
     }
 
     async function loadLeads() {
       try {
         const response = await fetch(`${API_BASE_URL}/leads`);
-
         if (!response.ok) {
           document.getElementById("savedLeads").innerHTML =
-            "<span class='error'>Error: Could not load leads from backend.</span>";
+            `<span class="error">Could not load leads from backend.</span>`;
           return;
         }
-
         const data = await response.json();
-        renderLeadsTable(data);
-
+        renderLeads(data);
       } catch (error) {
         document.getElementById("savedLeads").innerHTML =
-          "<span class='error'>Error: Could not load leads. Make sure backend is running.</span>";
+          `<span class="error">Could not load leads. Make sure backend is running.</span>`;
         console.error(error);
       }
     }
 
-    async function loadTtsConfig() {
+    async function loadSystemStatus() {
+      await Promise.allSettled([loadOpenAiStatus(), loadElevenLabsStatus()]);
+    }
+
+    async function loadOpenAiStatus() {
+      try {
+        const response = await fetch(`${API_BASE_URL}/health`);
+        const data = await response.json();
+        openAiConfigured = data.llm_configured === true;
+        if (data.openai_model || data.model || data.llm_model) {
+          openAiModel = data.openai_model || data.model || data.llm_model;
+        }
+      } catch (error) {
+        openAiConfigured = false;
+        openAiModel = "Status unavailable";
+        console.error(error);
+      }
+      renderOpenAiStatus();
+    }
+
+    async function loadElevenLabsStatus() {
       try {
         const response = await fetch(`${API_BASE_URL}/tts/config`);
         const data = await response.json();
         elevenLabsConfigured = data.configured === true;
-
-        const checkbox = document.getElementById("elevenLabsVoice");
-        checkbox.disabled = !elevenLabsConfigured;
-        checkbox.checked = elevenLabsConfigured;
-
-        if (elevenLabsConfigured) {
-          document.getElementById("ttsStatus").innerText =
-            `ElevenLabs: ready | model: ${data.model} | audio cache: ${data.cache_enabled ? "on" : "off"}`;
-        } else {
-          document.getElementById("ttsStatus").innerText =
-            "ElevenLabs: not configured. Add ELEVENLABS_API_KEY and ELEVENLABS_VOICE_ID to .env, then restart the backend. Browser voice fallback is available.";
-        }
+        elevenLabsModel = data.model || "Unknown";
       } catch (error) {
         elevenLabsConfigured = false;
-        document.getElementById("elevenLabsVoice").disabled = true;
-        document.getElementById("elevenLabsVoice").checked = false;
-        document.getElementById("ttsStatus").innerHTML =
-          "<span class='error'>ElevenLabs: could not reach backend TTS config.</span>";
+        elevenLabsModel = "Status unavailable";
         console.error(error);
       }
+      renderElevenLabsStatus();
     }
 
     async function speakText(text) {
+      if (!text || !text.trim()) return;
+
       const useElevenLabs =
         document.getElementById("elevenLabsVoice") &&
         document.getElementById("elevenLabsVoice").checked &&
@@ -901,73 +894,29 @@
 
       if (useElevenLabs) {
         const ok = await speakWithElevenLabs(text);
-        if (ok) {
-          return;
-        }
-
-        // Fallback if ElevenLabs fails during demo.
-        speakWithBrowser(text);
-        return;
+        if (ok) return;
       }
 
       speakWithBrowser(text);
     }
 
-    async function diagnoseElevenLabs() {
-      try {
-        document.getElementById("voiceStatus").innerText = "Voice status: diagnosing ElevenLabs...";
-        const response = await fetch(`${API_BASE_URL}/tts/diagnose`);
-        const text = await response.text();
-        let data = null;
-        try { data = JSON.parse(text); } catch (e) {}
-
-        if (!response.ok) {
-          const detail = data && (data.detail || data.error) ? (data.detail || data.error) : text;
-          document.getElementById("voiceStatus").innerText =
-            `Voice status: ElevenLabs diagnose failed (${response.status}). ${String(detail).slice(0, 260)}`;
-          console.error("ElevenLabs diagnose failed:", detail);
-          return;
-        }
-
-        const found = data.voice_found_in_account ? "voice found" : "voice NOT found";
-        document.getElementById("voiceStatus").innerText =
-          `Voice status: ElevenLabs diagnose ok — ${found}, ${data.available_voice_count} voices available.`;
-        console.log("ElevenLabs diagnose:", data);
-      } catch (err) {
-        document.getElementById("voiceStatus").innerText =
-          "Voice status: ElevenLabs diagnose failed. Check backend terminal.";
-        console.error(err);
-      }
-    }
-
     async function speakWithElevenLabs(text) {
-      if (!text || !text.trim()) {
-        return true;
-      }
-
       stopSpeaking();
-      document.getElementById("voiceStatus").innerText = "Voice status: generating ElevenLabs voice...";
+      document.getElementById("voiceStatus").innerText = "Generating ElevenLabs voice...";
 
       try {
         const started = performance.now();
         const response = await fetch(`${API_BASE_URL}/tts/speak`, {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ text })
         });
 
         if (!response.ok) {
           const errorText = await response.text();
-          let detail = errorText;
-          try {
-            const parsed = JSON.parse(errorText);
-            detail = parsed.detail || errorText;
-          } catch (e) {}
-          document.getElementById("voiceStatus").innerText =
-            `Voice status: ElevenLabs failed (${response.status}). ${String(detail).slice(0, 220)}`;
-          console.error("ElevenLabs TTS failed:", response.status, detail);
+          document.getElementById("voiceStatus").innerHTML =
+            `<span class="error">ElevenLabs failed. Using browser voice.</span>`;
+          console.error("ElevenLabs TTS failed:", response.status, errorText);
           return false;
         }
 
@@ -977,57 +926,43 @@
         const latency = Math.round(performance.now() - started);
 
         currentAudio = new Audio(audioUrl);
-
-        currentAudio.onplay = function () {
+        currentAudio.onplay = () => {
           document.getElementById("voiceStatus").innerText =
-            `Voice status: speaking with ElevenLabs... (${latency} ms, cache: ${cacheHeader})`;
+            `Speaking with ElevenLabs · ${latency} ms · cache: ${cacheHeader}`;
         };
-
-        currentAudio.onended = function () {
-          document.getElementById("voiceStatus").innerText = "Voice status: idle";
+        currentAudio.onended = () => {
+          document.getElementById("voiceStatus").innerText = "Idle";
           URL.revokeObjectURL(audioUrl);
           currentAudio = null;
         };
-
-        currentAudio.onerror = function () {
-          document.getElementById("voiceStatus").innerText =
-            "Voice status: ElevenLabs audio playback failed.";
+        currentAudio.onerror = () => {
+          document.getElementById("voiceStatus").innerHTML =
+            `<span class="error">ElevenLabs audio playback failed.</span>`;
           URL.revokeObjectURL(audioUrl);
           currentAudio = null;
         };
 
         await currentAudio.play();
         return true;
-      } catch (err) {
-        document.getElementById("voiceStatus").innerText =
-          "Voice status: ElevenLabs failed, using browser voice fallback.";
-        console.error("ElevenLabs playback error:", err);
+      } catch (error) {
+        document.getElementById("voiceStatus").innerHTML =
+          `<span class="error">ElevenLabs unavailable. Using browser voice.</span>`;
+        console.error(error);
         return false;
       }
     }
 
     function speakWithBrowser(text) {
-      if (!("speechSynthesis" in window)) {
-        document.getElementById("voiceStatus").innerText =
-          "Voice status: text-to-speech is not supported in this browser.";
+      if (!("speechSynthesis" in window) || !text) {
         return;
       }
-
       stopSpeaking();
-
       const utterance = new SpeechSynthesisUtterance(text);
       utterance.rate = 1.0;
       utterance.pitch = 1.0;
       utterance.volume = 1.0;
-
-      utterance.onstart = function () {
-        document.getElementById("voiceStatus").innerText = "Voice status: speaking reply with browser voice...";
-      };
-
-      utterance.onend = function () {
-        document.getElementById("voiceStatus").innerText = "Voice status: idle";
-      };
-
+      utterance.onstart = () => document.getElementById("voiceStatus").innerText = "Speaking with browser voice";
+      utterance.onend = () => document.getElementById("voiceStatus").innerText = "Idle";
       window.speechSynthesis.speak(utterance);
     }
 
@@ -1037,59 +972,47 @@
         currentAudio.currentTime = 0;
         currentAudio = null;
       }
-
       if ("speechSynthesis" in window) {
         window.speechSynthesis.cancel();
       }
     }
 
-    async function testElevenLabsVoice() {
-      await speakText("Hi, this is the painting receptionist. How can I help today?");
-    }
-
     function startVoiceInput() {
-      const SpeechRecognition =
-        window.SpeechRecognition || window.webkitSpeechRecognition;
-
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
       if (!SpeechRecognition) {
         document.getElementById("voiceStatus").innerHTML =
-          "<span class='error'>Speech recognition is not supported in this browser. Try Chrome.</span>";
+          `<span class="error">Speech recognition is not supported in this browser. Try Chrome.</span>`;
         return;
       }
 
       stopSpeaking();
-
       recognition = new SpeechRecognition();
       recognition.lang = "en-US";
       recognition.interimResults = false;
       recognition.continuous = false;
 
-      recognition.onstart = function () {
+      recognition.onstart = () => {
         isListening = true;
-        document.getElementById("voiceStatus").innerHTML =
-          "<span class='listening'>Voice status: listening...</span>";
+        document.getElementById("voiceStatus").innerHTML = `<span class="good">Listening...</span>`;
       };
 
-      recognition.onresult = function (event) {
+      recognition.onresult = event => {
         const transcript = event.results[0][0].transcript;
-
         document.getElementById("message").value = transcript;
-        document.getElementById("voiceStatus").innerText =
-          "Voice status: heard: " + transcript;
-
+        document.getElementById("voiceStatus").innerText = "Heard: " + transcript;
         sendMessage();
       };
 
-      recognition.onerror = function (event) {
+      recognition.onerror = event => {
         document.getElementById("voiceStatus").innerHTML =
-          "<span class='error'>Voice error: " + event.error + "</span>";
+          `<span class="error">Voice error: ${escapeHtml(event.error)}</span>`;
       };
 
-      recognition.onend = function () {
+      recognition.onend = () => {
         isListening = false;
-
-        if (!document.getElementById("voiceStatus").innerText.startsWith("Voice status: heard")) {
-          document.getElementById("voiceStatus").innerText = "Voice status: idle";
+        const status = document.getElementById("voiceStatus").innerText;
+        if (!status.startsWith("Heard:")) {
+          document.getElementById("voiceStatus").innerText = "Idle";
         }
       };
 
@@ -1100,12 +1023,22 @@
       if (recognition && isListening) {
         recognition.stop();
       }
-
       isListening = false;
-      document.getElementById("voiceStatus").innerText = "Voice status: idle";
+      document.getElementById("voiceStatus").innerText = "Idle";
     }
 
-    loadTtsConfig();
+    document.getElementById("message").addEventListener("keydown", event => {
+      if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
+        sendMessage();
+      }
+    });
+
+    const elevenLabsToggle = document.getElementById("elevenLabsVoice");
+    if (elevenLabsToggle) {
+      elevenLabsToggle.addEventListener("change", renderElevenLabsStatus);
+    }
+
+    loadSystemStatus();
     loadLeads();
   </script>
 </body>

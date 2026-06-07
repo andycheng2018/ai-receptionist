@@ -2,18 +2,19 @@ import re
 
 from app.company_config import COMPANY_CONFIG, service_area_display
 
-
+# Dictionary where the key is lowercase city name and the value is the original city name from company_config.py. This allows for quick case-insensitive matching while preserving the original formatting for responses.
 SERVICE_AREAS_LOWER = {
     city.lower(): city
     for city in COMPANY_CONFIG["service_areas"]
 }
 
+# Same thing but for services
 SERVICES_LOWER = {
     service.lower(): service
     for service in COMPANY_CONFIG["services"]
 }
 
-
+# Cleans customer response
 def normalize(text: str) -> str:
     """
     Normalize customer text so matching is easier.
@@ -24,7 +25,6 @@ def normalize(text: str) -> str:
     "do you serve san mateo?"
     """
     return re.sub(r"\s+", " ", text.lower().strip())
-
 
 def find_city_in_message(message: str) -> str | None:
     """
@@ -77,7 +77,8 @@ def find_service_in_message(message: str) -> str | None:
 
     if any(word in text for word in ["commercial", "office", "business", "storefront"]):
         return "commercial painting"
-
+    
+    # If nothing gets detected, do not guess. Let the next layer handle it.
     return None
 
 

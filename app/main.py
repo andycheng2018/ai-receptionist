@@ -4,23 +4,43 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
 
 from app.models import CustomerMessage
-from app.receptionist import handle_message, get_lead, get_transcript, apply_lead_patch, score_lead, build_conversation_summary, get_background_reasoner_status
-from app.llm_extractor import extract_lead_patch, llm_available
-from app.database import init_db, get_all_call_records, get_all_leads, update_lead_status
+from app.llm_receptionist import (
+    handle_message,
+    get_lead,
+    build_conversation_summary,
+    get_background_reasoner_status,
+    llm_available,
+)
+from app.database import (
+    init_db,
+    get_all_call_records,
+    get_all_leads,
+    update_lead_status,
+)
 from app.voice import router as voice_router
 from app.tts import router as tts_router
 
 
 app = FastAPI(title="AI Receptionist Prototype")
 
-# Serve files inside app/static at /static/...
+
+# Serve frontend/static files.
+# For a prototype, directory="." is okay.
+# Later, you can change this to directory="app/static" for tighter control.
 app.mount("/static", StaticFiles(directory="."), name="static")
 
+
+# Initialize SQLite/database tables on startup.
 init_db()
 
+
+# Add Twilio voice routes and TTS routes.
 app.include_router(voice_router)
 app.include_router(tts_router)
 
+
+# Allow browser frontend to call the backend.
+# For production, restrict allow_origins to your actual frontend domain.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -32,30 +52,40 @@ app.add_middleware(
 
 @app.get("/")
 def home():
+    """Serve the main web demo page."""
     return FileResponse("index.html")
+
 
 @app.get("/health")
 def health_check():
+    """Simple backend health check."""
     return {
         "status": "ok",
-        "service": "AI Receptionist Prototype"
+        "service": "AI Receptionist Prototype",
+        "llm_configured": llm_available(),
     }
 
 
 @app.post("/chat")
 def chat(req: CustomerMessage):
-    """Chat endpoint.
+    """Main chat endpoint for the AI receptionist.
 
-    v21 intentionally does not use a strict response_model here because LLM
-    outputs can occasionally produce type noise before sanitation. The handler
-    sanitizes the lead and returns a JSON-safe payload; if something still goes
-    wrong, return a graceful demo-safe response instead of a browser-level
-    "Invalid request".
+    The frontend sends a customer message here.
+    The receptionist returns:
+    - reply
+    - updated lead
+    - missing fields
+    - readiness status
+    - metrics
     """
     try:
-        message = (req.message or "").replace("\u2019", "'").replace("\u2018", "'").replace("\u201c", '"').replace("\u201d", '"')
-        result = handle_message(req.session_id or "default", message, live_mode=req.live_mode)
-        return result
+        message = clean_message(req.message)
+
+        return handle_message(
+            session_id=req.session_id or "default",
+            message=message,
+        )
+
     except Exception as exc:
         return JSONResponse(
             status_code=200,
@@ -75,10 +105,12 @@ def chat(req: CustomerMessage):
             },
         )
 
+
 @app.get("/sessions/{session_id}/lead")
 def get_session_lead(session_id: str):
-    """Return current in-memory lead plus background AI status for live demos."""
+    """Return the current in-memory lead for a session."""
     lead = get_lead(session_id)
+
     return {
         "lead": lead,
         "summary": build_conversation_summary(lead),
@@ -87,52 +119,38 @@ def get_session_lead(session_id: str):
     }
 
 
-@app.post("/sessions/{session_id}/ai-cleanup")
-def ai_cleanup(session_id: str):
-    """Run a slower real-LLM cleanup pass after/during the call.
-
-    This is intentionally separate from /chat so the live phone reply is not
-    blocked by a multi-second model call.
-    """
-    if not llm_available():
-        return {"success": False, "error": "Real AI/LLM is not configured. Set OPENAI_API_KEY or an OpenAI-compatible Qwen endpoint."}
-
-    lead = get_lead(session_id)
-    transcript_text = "\n".join(f"{m.get('speaker')}: {m.get('text')}" for m in get_transcript(session_id))
-    message = (
-        "Post-call cleanup. Review this painting-receptionist transcript and the current lead. "
-        "Return a structured patch that fixes stale fields, fills missing obvious fields, and keeps contact info.\n\n"
-        f"Transcript:\n{transcript_text}"
-    )
-    patch = extract_lead_patch(message, lead, use_llm=True, reasoner_mode="post_call_cleanup")
-    lead = apply_lead_patch(lead, patch)
-    lead = score_lead(lead)
-    return {
-        "success": True,
-        "lead": lead,
-        "summary": build_conversation_summary(lead),
-        "patch": patch,
-        "llm_configured": True,
-    }
-
-
 @app.get("/leads")
 def get_leads():
+    """Return all saved leads for the dashboard."""
     return get_all_leads()
 
 
 @app.get("/call-records")
 def get_call_records():
+    """Return saved call records and transcripts."""
     return get_all_call_records()
 
 
 @app.post("/leads/{lead_id}/status")
 def update_status(lead_id: int, payload: dict):
+    """Update a lead's dashboard status."""
     status = payload.get("status")
     result = update_lead_status(lead_id, status)
 
     return {
         "success": True,
         "lead_id": result["lead_id"],
-        "status": result["status"]
+        "status": result["status"],
     }
+
+
+def clean_message(message: str | None) -> str:
+    """Normalize common smart quotes from browser/voice input."""
+    return (
+        (message or "")
+        .replace("\u2019", "'")
+        .replace("\u2018", "'")
+        .replace("\u201c", '"')
+        .replace("\u201d", '"')
+        .strip()
+    )

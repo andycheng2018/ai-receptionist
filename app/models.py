@@ -6,9 +6,6 @@ class CustomerMessage(BaseModel):
     """What the customer sends to the API."""
     message: str
     session_id: Optional[str] = "default"
-    # True = phone-call mode: never block the reply on a slow real LLM call.
-    # False = smart web-chat mode: allow real LLM calls before replying.
-    live_mode: Optional[bool] = True
 
 
 class LeadInfo(BaseModel):
@@ -32,13 +29,12 @@ class LeadInfo(BaseModel):
     stories: Optional[int] = None
     occupied: Optional[bool] = None
     repairs_needed: Optional[bool] = None
-    photos_available: Optional[bool] = None
     cabinet_count: Optional[int] = None
     project_scope: Optional[str] = None  # whole home, full exterior, front only, touch-up, etc.
 
     # Lead operations fields
     timeline: Optional[str] = None
-    urgency: Optional[str] = None  # emergency, urgent, soon, flexible
+    urgency: Optional[str] = None  # urgent, soon, flexible
     preferred_callback_time: Optional[str] = None
     lead_score: Optional[int] = None
     lead_priority: Optional[str] = None  # Hot, Warm, Normal
