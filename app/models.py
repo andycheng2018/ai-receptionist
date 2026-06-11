@@ -36,6 +36,8 @@ class LeadInfo(BaseModel):
     timeline: Optional[str] = None
     urgency: Optional[str] = None  # urgent, soon, flexible
     preferred_callback_time: Optional[str] = None
+    # Optional only: useful if the customer volunteers it, never required.
+    photos_available: Optional[bool] = None
     lead_score: Optional[int] = None
     lead_priority: Optional[str] = None  # Hot, Warm, Normal
 
@@ -52,4 +54,5 @@ class ReceptionistResponse(BaseModel):
     ready_to_send_to_painter: bool
     handoff_required: bool = False
     final_call_json: dict[str, Any] | None = None
+    should_end: bool = False
     metrics: dict[str, Any] | None = None

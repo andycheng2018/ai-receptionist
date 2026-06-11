@@ -7,19 +7,20 @@
 
   <style>
     :root {
-      --bg: #f4f7fb;
-      --card: #ffffff;
-      --text: #172033;
-      --muted: #667085;
-      --border: #d9e2ef;
-      --primary: #2563eb;
-      --primary-dark: #1d4ed8;
-      --success: #16a34a;
-      --danger: #dc2626;
-      --warning: #ca8a04;
-      --soft-blue: #eaf2ff;
-      --soft-green: #ecfdf5;
-      --shadow: 0 18px 45px rgba(15, 23, 42, 0.08);
+      --bg: #080d18;
+      --card: #111827;
+      --card-2: #0f172a;
+      --text: #e5e7eb;
+      --muted: #94a3b8;
+      --border: #263244;
+      --primary: #3b82f6;
+      --primary-dark: #2563eb;
+      --success: #22c55e;
+      --danger: #ef4444;
+      --warning: #f59e0b;
+      --soft-blue: rgba(59, 130, 246, 0.18);
+      --soft-green: rgba(34, 197, 94, 0.15);
+      --shadow: 0 22px 55px rgba(0, 0, 0, 0.35);
     }
 
     * {
@@ -33,7 +34,7 @@
       color: var(--text);
       background:
         radial-gradient(circle at top left, rgba(37, 99, 235, 0.12), transparent 34%),
-        linear-gradient(180deg, #f8fbff 0%, var(--bg) 100%);
+        linear-gradient(180deg, #0f172a 0%, var(--bg) 100%);
     }
 
     .page {
@@ -71,7 +72,7 @@
       padding: 10px 14px;
       border: 1px solid var(--border);
       border-radius: 999px;
-      background: rgba(255, 255, 255, 0.72);
+      background: rgba(17, 24, 39, 0.78);
       color: var(--muted);
       font-size: 13px;
       white-space: nowrap;
@@ -86,7 +87,7 @@
 
     .card {
       background: var(--card);
-      border: 1px solid rgba(217, 226, 239, 0.9);
+      border: 1px solid var(--border);
       border-radius: 22px;
       box-shadow: var(--shadow);
       overflow: hidden;
@@ -124,13 +125,17 @@
       font-size: 15px;
       line-height: 1.5;
       outline: none;
-      background: #fbfdff;
+      background: var(--card-2);
       transition: border-color 0.15s ease, box-shadow 0.15s ease;
     }
 
+    textarea::placeholder {
+      color: #64748b;
+    }
+
     textarea:focus {
-      border-color: rgba(37, 99, 235, 0.65);
-      box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
+      border-color: rgba(59, 130, 246, 0.75);
+      box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.14);
     }
 
     .toolbar {
@@ -144,7 +149,7 @@
     button {
       border: 1px solid var(--border);
       border-radius: 999px;
-      background: white;
+      background: #1f2937;
       color: var(--text);
       padding: 10px 15px;
       font: inherit;
@@ -155,8 +160,8 @@
 
     button:hover {
       transform: translateY(-1px);
-      background: #f8fafc;
-      border-color: #b8c5d8;
+      background: #0b1220;
+      border-color: #475569;
     }
 
     button:disabled {
@@ -207,6 +212,17 @@
       user-select: none;
     }
 
+    .conversation-ended {
+      margin-top: 14px;
+      display: none;
+      padding: 12px 14px;
+      border: 1px solid rgba(34, 197, 94, 0.35);
+      border-radius: 16px;
+      background: rgba(34, 197, 94, 0.12);
+      color: #bbf7d0;
+      font-weight: 750;
+    }
+
     .status-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
@@ -218,7 +234,7 @@
       padding: 12px;
       border: 1px solid var(--border);
       border-radius: 16px;
-      background: #fbfdff;
+      background: var(--card-2);
       min-height: 70px;
     }
 
@@ -251,7 +267,7 @@
       margin-top: 18px;
       border: 1px solid var(--border);
       border-radius: 18px;
-      background: #f8fafc;
+      background: #0b1220;
       min-height: 260px;
       max-height: 430px;
       overflow-y: auto;
@@ -291,20 +307,20 @@
     .customer {
       margin-left: auto;
       background: var(--soft-blue);
-      border-color: #c9dcff;
+      border-color: rgba(59, 130, 246, 0.38);
     }
 
     .bot {
       margin-right: auto;
       background: var(--soft-green);
-      border-color: #bbf7d0;
+      border-color: rgba(34, 197, 94, 0.34);
     }
 
     .reply-box {
       padding: 14px;
       border: 1px solid var(--border);
       border-radius: 16px;
-      background: #fbfdff;
+      background: var(--card-2);
       line-height: 1.5;
       min-height: 54px;
     }
@@ -320,7 +336,7 @@
       justify-content: space-between;
       gap: 14px;
       padding: 11px 0;
-      border-bottom: 1px solid #eef2f7;
+      border-bottom: 1px solid var(--border);
     }
 
     .lead-row:last-child {
@@ -345,8 +361,8 @@
       align-items: center;
       padding: 4px 9px;
       border-radius: 999px;
-      background: #e0f2fe;
-      color: #075985;
+      background: rgba(14, 165, 233, 0.16);
+      color: #7dd3fc;
       font-size: 12px;
       font-weight: 750;
       white-space: nowrap;
@@ -361,11 +377,11 @@
       white-space: nowrap;
     }
 
-    .status-new { background: #dbeafe; color: #1d4ed8; }
-    .status-contacted { background: #fef3c7; color: #92400e; }
-    .status-scheduled { background: #dcfce7; color: #166534; }
-    .status-closed { background: #e5e7eb; color: #374151; }
-    .status-lost { background: #fee2e2; color: #991b1b; }
+    .status-new { background: rgba(59, 130, 246, 0.18); color: #93c5fd; }
+    .status-contacted { background: rgba(245, 158, 11, 0.16); color: #fbbf24; }
+    .status-scheduled { background: rgba(34, 197, 94, 0.16); color: #86efac; }
+    .status-closed { background: rgba(148, 163, 184, 0.16); color: #cbd5e1; }
+    .status-lost { background: rgba(239, 68, 68, 0.16); color: #fca5a5; }
 
     .dashboard {
       margin-top: 18px;
@@ -381,7 +397,7 @@
     .saved-card {
       border: 1px solid var(--border);
       border-radius: 18px;
-      background: #fbfdff;
+      background: var(--card-2);
       padding: 14px;
     }
 
@@ -458,8 +474,8 @@
 
           <div class="toolbar">
             <button class="primary" id="sendButton" onclick="sendMessage()">Send</button>
-            <button class="voice" onclick="startVoiceInput()">Start voice</button>
-            <button class="danger" onclick="stopVoiceInput()">Stop voice</button>
+            <button class="voice" id="startVoiceButton" onclick="startVoiceInput()">Start voice</button>
+            <button class="danger" id="stopVoiceButton" onclick="stopVoiceInput()">Stop voice</button>
             <button onclick="clearChat()">Clear chat</button>
             <label class="toggle">
               <input type="checkbox" id="speakReplies" checked /> Speak replies
@@ -468,6 +484,8 @@
               <input type="checkbox" id="elevenLabsVoice" checked /> ElevenLabs voice
             </label>
           </div>
+
+          <div class="conversation-ended" id="conversationEnded">Call ended. Start a new customer to test another conversation.</div>
 
           <div class="status-grid">
             <div class="status-card">
@@ -532,10 +550,31 @@
     let openAiModel = "Pending first LLM reply";
     let elevenLabsConfigured = false;
     let elevenLabsModel = "Unknown";
+    let conversationEnded = false;
     const API_BASE_URL = window.location.origin;
 
     document.getElementById("sessionId").innerText = sessionId;
     renderLeadSummary(null);
+
+    function setConversationEnded(ended) {
+      conversationEnded = Boolean(ended);
+      const messageBox = document.getElementById("message");
+      const sendButton = document.getElementById("sendButton");
+      const startVoiceButton = document.getElementById("startVoiceButton");
+      const banner = document.getElementById("conversationEnded");
+
+      messageBox.disabled = conversationEnded;
+      sendButton.disabled = conversationEnded;
+      if (startVoiceButton) startVoiceButton.disabled = conversationEnded;
+      if (banner) banner.style.display = conversationEnded ? "block" : "none";
+      if (conversationEnded) {
+        stopVoiceInput();
+        messageBox.placeholder = "Conversation ended. Click New customer to test again.";
+        document.getElementById("voiceStatus").innerHTML = `<span class="good">Call ended</span>`;
+      } else {
+        messageBox.placeholder = "Type a customer message, e.g. I need my hallway painted in San Mateo next week.";
+      }
+    }
 
     function newCustomer() {
       sessionId = "customer-" + Date.now();
@@ -552,6 +591,7 @@
       renderLeadSummary(null);
       stopSpeaking();
       stopVoiceInput();
+      setConversationEnded(false);
       document.getElementById("message").focus();
     }
 
@@ -682,6 +722,12 @@
     }
 
     async function sendMessage() {
+      if (conversationEnded) {
+        document.getElementById("reply").innerHTML =
+          `<span class="good">This conversation already ended. Click New customer to test again.</span>`;
+        return;
+      }
+
       const messageBox = document.getElementById("message");
       const message = messageBox.value.trim();
       const sendButton = document.getElementById("sendButton");
@@ -729,10 +775,16 @@
         }
 
         messageBox.value = "";
-        messageBox.focus();
 
         if (data.ready_to_send_to_painter) {
           loadLeads();
+        }
+
+        if (data.should_end) {
+          setConversationEnded(true);
+          addMessageToChat("System", "Call ended", "bot");
+        } else {
+          messageBox.focus();
         }
       } catch (error) {
         document.getElementById("reply").innerHTML =
@@ -741,7 +793,7 @@
           `<span class="bad">Failed</span>`;
         console.error(error);
       } finally {
-        sendButton.disabled = false;
+        sendButton.disabled = conversationEnded;
         sendButton.innerText = "Send";
       }
     }
@@ -978,6 +1030,10 @@
     }
 
     function startVoiceInput() {
+      if (conversationEnded) {
+        document.getElementById("voiceStatus").innerHTML = `<span class="good">Call ended</span>`;
+        return;
+      }
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
       if (!SpeechRecognition) {
         document.getElementById("voiceStatus").innerHTML =

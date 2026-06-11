@@ -168,7 +168,6 @@ def _phone_lead_ready_for_wrapup(lead) -> bool:
         and getattr(lead, "name", None)
         and getattr(lead, "phone", None)
         and getattr(lead, "timeline", None)
-        and getattr(lead, "photos_available", None) is not None
     )
 
 
@@ -211,8 +210,6 @@ def _phone_call_next_prompt(lead) -> str:
         return "When are you hoping to get this completed?"
     if not getattr(lead, "name", None):
         return "May I get your name?"
-    if getattr(lead, "photos_available", None) is None:
-        return "Do you have any photos you can share?"
     return "Is there anything else you'd like me to note for the painter?"
 
 
@@ -439,7 +436,8 @@ def _compute_twilio_job(job_id: str, session_id: str, user_message: str, public_
         result = handle_message(session_id=session_id, message=user_message)
         llm_latency_ms = int((time.perf_counter() - llm_started) * 1000)
         bot_reply = result.get("reply") or "Sorry, I had trouble with that. Could you say it one more time?"
-        bot_reply = _sanitize_phone_call_reply(bot_reply, result.get("lead"), caller_phone)
+        if not result.get("should_end"):
+            bot_reply = _sanitize_phone_call_reply(bot_reply, result.get("lead"), caller_phone)
 
         audio_url = None
         tts_latency_ms = None
@@ -495,12 +493,10 @@ def _append_job_reply(request: Request, response: VoiceResponse, job: TwilioJob)
         _twilio_say(response, bot_reply)
 
     lead = result.get("lead") if isinstance(result, dict) else None
-    # Phone calls should not hang up just because the lead looks complete. A real
-    # caller may want to add details or correct something. Keep listening unless
-    # TWILIO_AUTO_HANGUP=true, or the caller explicitly says goodbye/end the call.
-    done = False
-    if isinstance(result, dict) and _truthy(os.getenv("TWILIO_AUTO_HANGUP"), False):
-        done = bool(result.get("ready_to_send_to_painter"))
+    # Hang up only when the receptionist explicitly marks the conversation as
+    # finished. ready_to_send_to_painter only means the lead is complete; the bot
+    # may still need to ask the one final notes question.
+    done = bool(isinstance(result, dict) and result.get("should_end"))
 
     print(
         f"TWILIO latency job={job.job_id} llm_ms={job.llm_latency_ms} "
@@ -509,7 +505,6 @@ def _append_job_reply(request: Request, response: VoiceResponse, job: TwilioJob)
     )
 
     if done:
-        _say_or_play(request, response, _env("TWILIO_GOODBYE", "Thank you. The team will follow up with you. Goodbye."))
         response.hangup()
         return response
 
@@ -579,15 +574,14 @@ async def twilio_handle(
     result = handle_message(session_id=session_id, message=user_message)
     bot_reply = result.get("reply") or "Sorry, I had trouble with that. Could you say it one more time?"
     lead = result.get("lead")
-    bot_reply = _sanitize_phone_call_reply(bot_reply, lead, caller_phone)
+    if not result.get("should_end"):
+        bot_reply = _sanitize_phone_call_reply(bot_reply, lead, caller_phone)
     llm_ms = int((time.perf_counter() - llm_started) * 1000)
     print(f"TWILIO simple_mode llm_ms={llm_ms}")
-    # Do not hang up automatically in phone mode unless explicitly enabled.
-    done = bool(result.get("ready_to_send_to_painter")) and _truthy(os.getenv("TWILIO_AUTO_HANGUP"), False)
+    done = bool(result.get("should_end"))
 
     if done:
         _say_or_play(request, response, bot_reply)
-        _say_or_play(request, response, _env("TWILIO_GOODBYE", "Thank you. The team will follow up with you. Goodbye."))
         response.hangup()
         return _twiml(response)
 

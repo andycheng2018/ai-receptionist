@@ -94,6 +94,7 @@ def chat(req: CustomerMessage):
                 "lead": {},
                 "missing_fields": [],
                 "ready_to_send_to_painter": False,
+                "should_end": False,
                 "handoff_required": False,
                 "final_call_json": None,
                 "metrics": {

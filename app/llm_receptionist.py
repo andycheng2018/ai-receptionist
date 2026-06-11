@@ -99,6 +99,7 @@ PATCHABLE_FIELDS = {
     "urgency",
     "preferred_callback_time",
     "handoff_required",
+    "photos_available",
     "notes",
 }
 
@@ -110,6 +111,7 @@ BOOL_FIELDS = {
     "occupied",
     "repairs_needed",
     "handoff_required",
+    "photos_available",
 }
 
 INT_FIELDS = {
@@ -930,18 +932,37 @@ def _clean_city_text(city: str | None) -> str:
 
 
 def canonical_supported_city(city: str | None) -> str | None:
-    """Return official city display name if supported, otherwise None."""
+    """Return official city display name if supported, otherwise None.
+
+    Accept either a bare city ("Fremont") or a full address/string that
+    contains a supported city ("123 Main St, Fremont, CA 94538").
+    """
     cleaned = _clean_city_text(city)
     if not cleaned:
         return None
-    return SERVICE_CITY_DISPLAY.get(cleaned)
+
+    exact = SERVICE_CITY_DISPLAY.get(cleaned)
+    if exact:
+        return exact
+
+    # Full-address fallback: match supported city as words, not as a random
+    # substring. This prevents valid addresses from being rejected just because
+    # the LLM placed the whole address in the city field.
+    for city_key, display in SERVICE_CITY_DISPLAY.items():
+        pattern = r"(^|[^a-z])" + re.escape(city_key) + r"([^a-z]|$)"
+        if re.search(pattern, cleaned):
+            return display
+
+    return None
 
 
 def unsupported_city_reply(city: str | None = None) -> str:
     city_text = f" in {city.strip()}" if isinstance(city, str) and city.strip() else " there"
+    services = ", ".join(COMPANY_CONFIG.get("services", [])[:4])
     return (
         f"Sorry, we don’t currently service projects{city_text}. "
-        f"We serve {SUPPORTED_CITY_DISPLAY}. What city is the project in?"
+        f"BrightLine handles {services}, and related painting work in {SUPPORTED_CITY_DISPLAY}. "
+        "What Bay Area city is the project in?"
     )
 
 
@@ -1182,6 +1203,66 @@ def customer_done_signal(message: str) -> bool:
     )
 
 
+
+def customer_goodbye_signal(message: str) -> bool:
+    """True when the customer is trying to leave/end the call, even if the lead is incomplete."""
+    t = normalize_text(message)
+    if not t:
+        return False
+
+    exact = {
+        "bye", "goodbye", "good bye", "see you", "see ya", "later",
+        "nevermind", "never mind", "cancel", "stop", "end call",
+        "i have to go", "gotta go", "talk to you later",
+        "no thanks", "no thank you", "that's okay", "thats okay",
+    }
+    if t in exact:
+        return True
+
+    return any(
+        phrase in t
+        for phrase in [
+            "bye", "goodbye", "have to go", "gotta go", "end the call",
+            "hang up", "talk later", "call later", "i'll call back", "ill call back",
+            "never mind", "nevermind", "no longer need", "don't need help", "dont need help",
+        ]
+    )
+
+
+def phone_refusal_signal(message: str, lead: LeadInfo) -> bool:
+    """True when the customer explicitly refuses to provide a phone number."""
+    if lead.phone:
+        return False
+
+    t = normalize_text(message)
+    return any(
+        phrase in t
+        for phrase in [
+            "don't want to give my phone", "dont want to give my phone",
+            "don't want to give a phone", "dont want to give a phone",
+            "don't want to give my number", "dont want to give my number",
+            "won't give my phone", "wont give my phone",
+            "won't give my number", "wont give my number",
+            "not giving my phone", "not giving my number",
+            "no phone number", "no callback number", "rather not give",
+            "i don't want to give it", "i dont want to give it",
+        ]
+    )
+
+
+def incomplete_closing_reply(lead: LeadInfo) -> str:
+    """A clean ending when the customer leaves before a complete lead is collected."""
+    name = f", {lead.name}" if lead.name else ""
+    return f"No problem{name}. Thanks for reaching out to BrightLine Painting. Have a great day."
+
+
+def phone_refusal_reply() -> str:
+    """Do not keep pushing for a phone number when the customer refuses."""
+    return (
+        "No problem. The painter needs a callback number to follow up with an estimate, "
+        "but I can still answer general questions about BrightLine Painting services and service areas."
+    )
+
 def final_check_context(previous_ai_reply: str | None) -> bool:
     """Whether the last AI reply was the final anything-else check."""
     t = normalize_text(previous_ai_reply or "")
@@ -1203,6 +1284,57 @@ def closing_reply(lead: LeadInfo) -> str:
     timeline = f" for {lead.timeline}" if lead.timeline else ""
     return f"Thanks{name}. I have your {service}{city}{timeline}. The painter will follow up with you."
 
+
+
+
+def _response_payload(
+    *,
+    reply: str,
+    lead: LeadInfo,
+    missing: list[str],
+    ready: bool,
+    final_call_json: dict[str, Any] | None,
+    metrics: dict[str, Any],
+    should_end: bool = False,
+) -> dict[str, Any]:
+    """Consistent API shape for web chat and phone calls.
+
+    ready_to_send_to_painter means the lead is complete. should_end means the
+    receptionist should stop the chat / hang up now. These are intentionally
+    separate so the bot can ask one final notes question before closing.
+    """
+    return {
+        "reply": reply,
+        "lead": lead,
+        "missing_fields": missing,
+        "ready_to_send_to_painter": ready,
+        "should_end": should_end,
+        "handoff_required": lead.handoff_required,
+        "final_call_json": final_call_json,
+        "metrics": metrics,
+    }
+
+
+def _save_if_ready_or_handoff(
+    session_id: str,
+    lead: LeadInfo,
+    missing: list[str],
+    ready: bool,
+    latency_ms: int | None,
+) -> dict[str, Any] | None:
+    """Persist lead once, if it is complete or needs human handoff."""
+    if not ((ready or lead.handoff_required) and not lead.saved):
+        return None
+    final_call_json = build_final_call_json(session_id, lead, missing, ready, latency_ms)
+    save_lead_to_db(session_id, lead, final_call_json)
+    save_final_call_json(session_id, final_call_json)
+    lead.saved = True
+    return final_call_json
+
+
+def _final_note_close_reply(lead: LeadInfo) -> str:
+    name = f", {lead.name}" if lead.name else ""
+    return f"Perfect{name}. I added that note. The painter will follow up with you. Thanks for calling."
 
 def is_probable_assistant_echo(message: str, previous_ai_reply: str | None) -> bool:
     """Ignore accidental mic/browser echo of the receptionist's own reply."""
@@ -1638,6 +1770,7 @@ def _cache_or_faq_reply(session_id: str, message: str, lead: LeadInfo, start: fl
         "lead": lead,
         "missing_fields": missing,
         "ready_to_send_to_painter": len(missing) == 0,
+        "should_end": False,
         "handoff_required": lead.handoff_required,
         "final_call_json": None,
         "metrics": metrics,
@@ -1659,48 +1792,141 @@ def handle_message(session_id: str, message: str) -> dict[str, Any]:
     previous_ai = last_ai_reply(session_id)
     phone_before = lead.phone
 
-    if customer_done_signal(message) and (final_check_context(previous_ai) or _lead_has_enough_for_final_check(lead)):
+    # If the customer clearly wants to leave, end immediately. This must run
+    # before FAQ/cache/LLM logic so no follow-up question gets appended after
+    # a closing sentence. This also handles incomplete leads, such as a caller
+    # who refuses to give a phone number and then says "bye."
+    if customer_goodbye_signal(message):
         add_transcript_message(session_id, "customer", message.strip())
         lead = score_lead(sanitize_lead_schema(lead))
         missing = missing_fields(lead)
         ready = len(missing) == 0
-        reply = closing_reply(lead)
+        reply = closing_reply(lead) if _lead_has_enough_for_final_check(lead) else incomplete_closing_reply(lead)
+        add_transcript_message(session_id, "ai", reply)
+        latency_ms = int((time.perf_counter() - start) * 1000)
+        final_call_json = None
+        try:
+            final_call_json = _save_if_ready_or_handoff(session_id, lead, missing, ready, latency_ms)
+        except Exception:
+            logger.exception("Failed to save lead/final call JSON.")
+        metrics = _base_metrics(latency_ms, source="customer_goodbye")
+        metrics.update({
+            "lead_score": lead.lead_score,
+            "lead_priority": lead.lead_priority,
+            "reasoner_used": False,
+            "reasoner_confidence": 1.0,
+            "reasoner_reason": "Customer used a goodbye/stop phrase; closed without appending another question.",
+            "talker_used": False,
+            "talker_reason": "Deterministic goodbye close.",
+        })
+        return _response_payload(
+            reply=reply,
+            lead=lead,
+            missing=missing,
+            ready=ready,
+            final_call_json=final_call_json,
+            metrics=metrics,
+            should_end=True,
+        )
+
+    # If the customer refuses to provide a phone number, acknowledge once and
+    # do not ask for another lead-capture field in the same response. The user
+    # can still ask general questions, and a later "bye" will end cleanly.
+    if phone_refusal_signal(message, lead):
+        add_transcript_message(session_id, "customer", message.strip())
+        lead = score_lead(sanitize_lead_schema(lead))
+        missing = missing_fields(lead)
+        reply = phone_refusal_reply()
+        add_transcript_message(session_id, "ai", reply)
+        latency_ms = int((time.perf_counter() - start) * 1000)
+        metrics = _base_metrics(latency_ms, source="phone_refusal")
+        metrics.update({
+            "lead_score": lead.lead_score,
+            "lead_priority": lead.lead_priority,
+            "reasoner_used": False,
+            "reasoner_confidence": 1.0,
+            "reasoner_reason": "Customer refused to provide a callback number; acknowledged without pushing.",
+            "talker_used": False,
+            "talker_reason": "Deterministic phone refusal response.",
+        })
+        return _response_payload(
+            reply=reply,
+            lead=lead,
+            missing=missing,
+            ready=False,
+            final_call_json=None,
+            metrics=metrics,
+            should_end=False,
+        )
+
+    # Deterministic close: once the receptionist has asked the final
+    # "anything else" question, the next customer turn either ends the
+    # conversation or is saved as the last note. Do not loop forever.
+    if final_check_context(previous_ai) and _lead_has_enough_for_final_check(lead):
+        add_transcript_message(session_id, "customer", message.strip())
+        if customer_done_signal(message):
+            reply = closing_reply(lead)
+            source = "customer_done"
+            reason = "Customer said they were done after the final check; closed without asking another question."
+        else:
+            append_note(lead, message.strip()[:250])
+            reply = _final_note_close_reply(lead)
+            source = "final_note_added"
+            reason = "Customer added one final note after the final check; saved it and closed without another question."
+
+        lead = score_lead(sanitize_lead_schema(lead))
+        missing = missing_fields(lead)
+        ready = len(missing) == 0
         add_transcript_message(session_id, "ai", reply)
 
         final_call_json: dict[str, Any] | None = None
         latency_ms = int((time.perf_counter() - start) * 1000)
+        try:
+            final_call_json = _save_if_ready_or_handoff(session_id, lead, missing, ready, latency_ms)
+        except Exception:
+            logger.exception("Failed to save lead/final call JSON.")
 
-        if (ready or lead.handoff_required) and not lead.saved:
-            try:
-                final_call_json = build_final_call_json(session_id, lead, missing, ready, latency_ms)
-                save_lead_to_db(session_id, lead, final_call_json)
-                save_final_call_json(session_id, final_call_json)
-                lead.saved = True
-            except Exception:
-                logger.exception("Failed to save lead/final call JSON.")
-
-        metrics = _base_metrics(latency_ms, source="customer_done")
+        metrics = _base_metrics(latency_ms, source=source)
         metrics.update(
             {
                 "lead_score": lead.lead_score,
                 "lead_priority": lead.lead_priority,
                 "reasoner_used": False,
                 "reasoner_confidence": 1.0,
-                "reasoner_reason": "Customer said they were done after the final check; closed without asking another question.",
+                "reasoner_reason": reason,
                 "talker_used": False,
                 "talker_reason": "Deterministic close.",
             }
         )
 
-        return {
-            "reply": reply,
-            "lead": lead,
-            "missing_fields": missing,
-            "ready_to_send_to_painter": ready,
-            "handoff_required": lead.handoff_required,
-            "final_call_json": final_call_json,
-            "metrics": metrics,
-        }
+        return _response_payload(
+            reply=reply,
+            lead=lead,
+            missing=missing,
+            ready=ready,
+            final_call_json=final_call_json,
+            metrics=metrics,
+            should_end=True,
+        )
+
+    if customer_done_signal(message) and _lead_has_enough_for_final_check(lead):
+        # Customer is clearly trying to end even if the exact previous prompt was
+        # not detected as the final check. Close instead of asking another question.
+        add_transcript_message(session_id, "customer", message.strip())
+        lead = score_lead(sanitize_lead_schema(lead))
+        missing = missing_fields(lead)
+        ready = len(missing) == 0
+        reply = closing_reply(lead)
+        add_transcript_message(session_id, "ai", reply)
+        latency_ms = int((time.perf_counter() - start) * 1000)
+        final_call_json = None
+        try:
+            final_call_json = _save_if_ready_or_handoff(session_id, lead, missing, ready, latency_ms)
+        except Exception:
+            logger.exception("Failed to save lead/final call JSON.")
+        metrics = _base_metrics(latency_ms, source="customer_done")
+        metrics.update({"lead_score": lead.lead_score, "lead_priority": lead.lead_priority, "reasoner_used": False, "reasoner_confidence": 1.0})
+        return _response_payload(reply=reply, lead=lead, missing=missing, ready=ready, final_call_json=final_call_json, metrics=metrics, should_end=True)
 
     if is_probable_assistant_echo(message, previous_ai):
         missing = missing_fields(lead)
@@ -1720,6 +1946,7 @@ def handle_message(session_id: str, message: str) -> dict[str, Any]:
             "lead": lead,
             "missing_fields": missing,
             "ready_to_send_to_painter": len(missing) == 0,
+            "should_end": False,
             "handoff_required": lead.handoff_required,
             "final_call_json": None,
             "metrics": metrics,
@@ -1754,6 +1981,7 @@ def handle_message(session_id: str, message: str) -> dict[str, Any]:
             "lead": lead,
             "missing_fields": missing,
             "ready_to_send_to_painter": False,
+            "should_end": False,
             "handoff_required": lead.handoff_required,
             "final_call_json": None,
             "metrics": metrics,
@@ -1868,6 +2096,7 @@ def handle_message(session_id: str, message: str) -> dict[str, Any]:
         "lead": lead,
         "missing_fields": missing,
         "ready_to_send_to_painter": ready,
+        "should_end": False,
         "handoff_required": lead.handoff_required,
         "final_call_json": final_call_json,
         "metrics": metrics,
