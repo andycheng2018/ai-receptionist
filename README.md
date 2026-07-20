@@ -1,6 +1,15 @@
 # AI Receptionist Prototype
 
-An AI-powered receptionist prototype for a painting contractor. The app chats with customers, collects painting lead details, applies safety guardrails, saves completed leads to SQLite, supports a browser demo, and can connect to Twilio phone calls with optional ElevenLabs voice output.
+An AI-powered receptionist for a painting contractor that chats with customers, qualifies leads, applies business guardrails, and saves completed leads.
+
+<p>
+  <a href="https://ai-receptionist-ugk0.onrender.com/"><strong>Try the Live Demo</strong></a>
+  ·
+  <a href="https://github.com/andycheng2018/ai-receptionist"><strong>View Source</strong></a>
+</p>
+
+> The Render free tier may take a little while to wake up on the first visit.
+
 
 ## Current Highlights
 
@@ -172,6 +181,14 @@ Is there anything else you’d like me to note for the painter?
 If the customer says `no`, `nope`, `that’s all`, `thanks`, or similar, the receptionist closes politely and does not ask more questions.
 
 ## Browser Demo
+
+### Hosted demo
+
+**[Open the live Render deployment](https://ai-receptionist-ugk0.onrender.com/)**
+
+The free Render instance may need a short warm-up before the first request.
+
+### Run locally
 
 Start the backend:
 
